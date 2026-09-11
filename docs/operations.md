@@ -1,5 +1,10 @@
 # Mac Service Operations
 
+This is the local development/staging runbook. Production must run independently
+of a personal Mac; see [cloud architecture](cloud-architecture.md). Mac Keychain,
+launchd and installed-app OAuth are development integrations, not the production
+deployment contract.
+
 ## Local dry run
 
 ```bash

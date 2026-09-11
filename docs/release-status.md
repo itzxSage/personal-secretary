@@ -4,6 +4,18 @@ The local engine and fixture workflows are executable. The complete personal
 assistant is not ready to deploy. The old plan's checked boxes are historical
 implementation claims; current verification establishes what is tested.
 
+The 2026-09-11 review changes the next milestone: establish engineering history,
+fix hard planner constraints, and build toward Mac-independent cloud operation
+before expanding live capabilities. [Capability maturity](capability-maturity.md)
+is the current implementation map; [cloud architecture](cloud-architecture.md)
+defines the deployment target. Cloud deployment remains unimplemented.
+
+The repository now has a local baseline commit. Build products are excluded from
+source, and CI actions use immutable references. Planner dependencies enforce
+finish-to-start order; deadlines are hard by default, with explicit recovery for
+already missed deadlines. Fixed constraints and DST travel have regression coverage.
+See [planner semantics](planner-semantics.md) and [source management](source-management.md).
+
 ## Codex continuation
 
 - Signed approvals now bind the exact action, payload, device, actor, timestamps
@@ -39,6 +51,11 @@ implementation claims; current verification establishes what is tested.
   [calendar setup](google-calendar-live.md).
 
 ## Remaining release work
+
+First extract and verify cloud persistence/identity boundaries, provision an isolated
+staging cell and demonstrate Mac-off operation. Existing local integration success
+does not satisfy that requirement. Continue the following capabilities against the
+cloud target after those boundaries are ready.
 
 1. Extend the implemented persistent HTTPS text relay to realtime WebSocket/audio,
    microphone/playback and assistant replies. Replace developer USB pairing with native UI,

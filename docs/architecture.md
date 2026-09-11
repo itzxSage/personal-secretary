@@ -1,6 +1,12 @@
 # LifeOS architecture and implementation status
 
-The macOS Python Life Engine owns SQLCipher state, canonical records and audit,
+Production must be independent of the owner's personal computer. The adopted
+target is a dedicated cloud deployment per customer, with transactional PostgreSQL,
+tenant-scoped KMS/secrets and isolated workers. See
+[cloud architecture](cloud-architecture.md) for decisions, migration requirements
+and outstanding deployment inputs. That cloud system is not implemented yet.
+
+The current development macOS Python Life Engine owns SQLCipher state, canonical records and audit,
 goals/memory, deterministic day plans, approval policy and reconciliation.
 Google Calendar and OpenClaw are external projections/adapters. The Swift client
 shares the conversation contract and encrypts its offline event outbox.
@@ -37,7 +43,9 @@ Three executable HTTP surfaces currently exist:
   approval, replan and rollback using SQLCipher and an in-memory calendar sandbox.
 - `scripts/relay.py`: explicit staging-only conversation ingress with real TLS
   peer binding, request signatures, durable replay rejection and private membership.
-  Swift delivery uses system TLS trust, refuses redirects and retains failed batches.
+  Swift staging delivery pins the server certificate, validates its private trust
+  anchor, refuses redirects and retains failed batches. Physical phone-to-Mac
+  delivery and deletion were observed on 2026-09-11.
 
 None is the completed production assistant. The fixture API's public
 test signing key must never be enrolled in a real deployment.

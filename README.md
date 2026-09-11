@@ -6,8 +6,10 @@ a Swift client shell, and constrained OpenClaw/worker adapters.
 
 The local engine and fixture scenarios are executable. This is **not yet an
 operational iPhone-to-cloud personal assistant**. A persistent mTLS text-event
-relay and opt-in Swift delivery now exist; realtime/live integrations and native iOS
-installation/voice QA has not been verified. See [release status](docs/release-status.md).
+relay and opt-in Swift delivery now exist, and physical iPhone-to-Mac text delivery
+and deletion have been verified. Cloud operation and realtime audio remain unfinished.
+See [capability maturity](docs/capability-maturity.md),
+[cloud architecture](docs/cloud-architecture.md) and [release status](docs/release-status.md).
 
 ## Run locally
 
@@ -31,12 +33,13 @@ retention and Keychain prerequisites. It is not enabled in the fixture server.
 
 The [staging conversation relay](docs/conversation-relay.md) supports encrypted,
 authenticated text delivery and resume. Tests exercise real loopback mTLS without
-personal credentials. Native pairing and realtime voice remain unfinished.
+personal credentials. Developer USB pairing works; native onboarding and realtime
+voice remain unfinished.
 
 An installable iOS Xcode project can be regenerated from
 `ios/SecretaryApp/project.yml` with `xcodegen generate --spec
-ios/SecretaryApp/project.yml`. Signing remains deliberately unset until you select
-your Apple development team in Xcode.
+ios/SecretaryApp/project.yml`. The local development team's signing configuration
+is present; other developers must select their own team in Xcode.
 
 The real least-scope Google Calendar REST/OAuth path is also implemented and
 disabled by default. See [calendar staging setup](docs/google-calendar-live.md).
