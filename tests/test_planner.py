@@ -71,8 +71,8 @@ def test_seeded_day_has_exact_internal_schedule_projection_and_overdue_rationale
     ]
     post = next(item for item in proposal.explanations if item.activity_id == "discussion-post")
     assert post.summary == (
-        "Scheduled first because its deadline was overdue by 8 hours and 1 minute "
-        "at the planning window."
+        "Scheduled as explicitly requested recovery work; its deadline was missed by "
+        "8 hours and 1 minute at the planning window."
     )
     assert tuple(post.model_dump()) == (
         "activity_id",

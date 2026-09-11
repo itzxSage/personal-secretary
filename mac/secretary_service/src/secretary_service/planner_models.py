@@ -72,6 +72,7 @@ class PlanActivity(PlannerModel):
     earliest_start: datetime | None = None
     latest_end: datetime | None = None
     deadline: datetime | None = None
+    recover_missed_deadline: bool = False
     dependencies: tuple[NonEmptyText, ...] = ()
     travel_minutes_before: int = Field(default=0, ge=0, le=1440)
     travel_minutes_after: int = Field(default=0, ge=0, le=1440)
@@ -97,6 +98,9 @@ class PlanActivity(PlannerModel):
             if value is not None:
                 _validate_minute(value, field_name)
         _validate_activity_placement(self)
+        if self.recover_missed_deadline and self.deadline is None:
+            message = "deadline recovery requires an explicit deadline"
+            raise ValueError(message)
         if (
             self.latest_end is not None
             and self.earliest_start is not None

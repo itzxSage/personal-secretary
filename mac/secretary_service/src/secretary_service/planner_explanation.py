@@ -104,8 +104,8 @@ def explain_activity(
             hour_label = "hour" if hours == 1 else "hours"
             minute_label = "minute" if minutes == 1 else "minutes"
             summary = (
-                f"Scheduled first because its deadline was overdue by {hours} {hour_label} "
-                f"and {minutes} {minute_label} at the planning window."
+                f"Scheduled as explicitly requested recovery work; its deadline was missed by "
+                f"{hours} {hour_label} and {minutes} {minute_label} at the planning window."
             )
         case ExplanationCode.FIXED:
             summary = "Kept at its fixed time and protected from flexible work."
@@ -139,7 +139,10 @@ def infeasible_explanation(
     return TaskExplanation(
         activity_id=activity.activity_id,
         code=ExplanationCode.INFEASIBLE,
-        summary="Fixed or protected reservation conflicts with another required interval.",
+        summary=(
+            "Fixed or protected reservation violates a hard time constraint "
+            "or overlaps another interval."
+        ),
         score=score_activity(
             activity,
             request,
@@ -223,6 +226,8 @@ def _constraints(activity: PlanActivity) -> tuple[str, ...]:
     values: list[str] = [f"duration={activity.duration_minutes}m"]
     if activity.deadline is not None:
         values.append(f"deadline={activity.deadline.isoformat()}")
+    if activity.recover_missed_deadline:
+        values.append("recover_missed_deadline=true")
     if activity.dependencies:
         values.append(f"dependencies={','.join(activity.dependencies)}")
     if activity.travel_minutes_before or activity.travel_minutes_after:

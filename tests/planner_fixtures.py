@@ -59,6 +59,7 @@ def seeded_request() -> DayPlanRequest:
                 flexibility=ActivityFlexibility.FLEXIBLE,
                 duration_minutes=45,
                 deadline=datetime(2026, 9, 6, 23, 59, tzinfo=EASTERN),
+                recover_missed_deadline=True,
                 goal_weight=2,
                 importance=5,
                 display_group="coursework",

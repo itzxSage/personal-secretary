@@ -10,7 +10,12 @@ from secretary_service.planner_explanation import (
     infeasible_explanation,
 )
 from secretary_service.planner_models import DayPlanRequest
-from secretary_service.planner_placement import dependent_counts, place_fixed, place_flexible
+from secretary_service.planner_placement import (
+    dependent_counts,
+    invalid_dependencies,
+    place_fixed,
+    place_flexible,
+)
 from secretary_service.planner_projection import build_diff, project_calendar
 from secretary_service.planner_results import (
     PlanStatus,
@@ -57,7 +62,10 @@ def propose_day(request: DayPlanRequest) -> ProposedDay:
             UnscheduledActivity(
                 activity_id=activity_id,
                 reason=UnscheduledReason.FIXED_CONFLICT,
-                detail="Fixed or protected reservation overlaps another required reservation.",
+                detail=(
+                    "Fixed or protected reservation violates a hard time constraint "
+                    "or overlaps another reservation."
+                ),
                 blocking_activity_ids=tuple(sorted(fixed_result - {activity_id})),
             )
             for activity_id in sorted(fixed_result)
@@ -76,6 +84,34 @@ def propose_day(request: DayPlanRequest) -> ProposedDay:
         )
     placements = list(fixed_result)
     unscheduled = place_flexible(request, placements, counts)
+    if broken := invalid_dependencies(placements):
+        # Fixed reservations cannot silently disappear or be shown with unmet prerequisites.
+        rejected = [
+            UnscheduledActivity(
+                activity_id=activity.activity_id,
+                reason=UnscheduledReason.DEPENDENCY_UNSCHEDULED,
+                detail=(
+                    "Required fixed schedule has unmet or reversed dependencies; no plan emitted."
+                ),
+                blocking_activity_ids=tuple(sorted(broken)),
+            )
+            for activity in request.activities
+        ]
+        return ProposedDay(
+            input_fingerprint=fingerprint,
+            state_revision=request.state_revision,
+            timezone=request.timezone,
+            status=PlanStatus.INFEASIBLE,
+            schedule_resolution=request.schedule_resolution,
+            internal_plan=(),
+            calendar_projection=(),
+            explanations=tuple(
+                explain_activity(activity, request, [], rejected, counts[activity.activity_id])
+                for activity in request.activities
+            ),
+            unscheduled=tuple(rejected),
+            diff=build_diff(request, ()),
+        )
     blocks = build_internal_plan(request, tuple(placements))
     explanations = tuple(
         explain_activity(

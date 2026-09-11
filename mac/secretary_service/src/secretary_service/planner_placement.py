@@ -29,12 +29,14 @@ class Placement:
     @property
     def reservation_start(self) -> datetime:
         """Return the start including travel before the activity."""
-        return self.starts_at - timedelta(minutes=self.activity.travel_minutes_before)
+        return self.starts_at.astimezone(UTC) - timedelta(
+            minutes=self.activity.travel_minutes_before
+        )
 
     @property
     def reservation_end(self) -> datetime:
         """Return the end including travel after the activity."""
-        return self.ends_at + timedelta(minutes=self.activity.travel_minutes_after)
+        return self.ends_at.astimezone(UTC) + timedelta(minutes=self.activity.travel_minutes_after)
 
 
 def dependent_counts(request: DayPlanRequest) -> dict[str, int]:
@@ -74,6 +76,8 @@ def place_fixed(
         if placement.reservation_start.astimezone(UTC) < request.window_start.astimezone(
             UTC
         ) or placement.reservation_end.astimezone(UTC) > request.window_end.astimezone(UTC):
+            conflicts.add(activity.activity_id)
+        if not satisfies_time_bounds(placement, request):
             conflicts.add(activity.activity_id)
         for existing in placements:
             if overlaps(placement, existing):
@@ -167,17 +171,10 @@ def best_placement(
 ) -> Placement | None:
     """Choose the highest-scoring free minute, breaking ties chronologically."""
     zone = ZoneInfo(request.timezone)
-    lower = request.window_start.astimezone(UTC) + timedelta(minutes=activity.travel_minutes_before)
-    if activity.earliest_start is not None:
-        lower = max(lower, activity.earliest_start.astimezone(UTC))
-    upper = request.window_end.astimezone(UTC) - timedelta(
-        minutes=activity.duration_minutes + activity.travel_minutes_after
-    )
-    if activity.latest_end is not None:
-        upper = min(
-            upper,
-            activity.latest_end.astimezone(UTC) - timedelta(minutes=activity.duration_minutes),
-        )
+    bounds = placement_bounds(activity, request, placements)
+    if bounds is None:
+        return None
+    lower, upper = bounds
     candidates: list[Placement] = []
     starts_at = lower
     while starts_at <= upper:
@@ -199,8 +196,78 @@ def best_placement(
     )
 
 
+def placement_bounds(
+    activity: PlanActivity, request: DayPlanRequest, placements: list[Placement]
+) -> tuple[datetime, datetime] | None:
+    """Intersect UTC start bounds, finish limits, and already placed dependencies."""
+    lower = request.window_start.astimezone(UTC) + timedelta(minutes=activity.travel_minutes_before)
+    if activity.earliest_start is not None:
+        lower = max(lower, activity.earliest_start.astimezone(UTC))
+    predecessors = [
+        item for item in placements if item.activity.activity_id in activity.dependencies
+    ]
+    if len({item.activity.activity_id for item in predecessors}) != len(set(activity.dependencies)):
+        return None
+    for predecessor in predecessors:
+        lower = max(lower, predecessor.ends_at.astimezone(UTC))
+    upper = request.window_end.astimezone(UTC) - timedelta(
+        minutes=activity.duration_minutes + activity.travel_minutes_after
+    )
+    if activity.latest_end is not None:
+        upper = min(
+            upper,
+            activity.latest_end.astimezone(UTC) - timedelta(minutes=activity.duration_minutes),
+        )
+    if (deadline := hard_deadline(activity, request)) is not None:
+        upper = min(upper, deadline - timedelta(minutes=activity.duration_minutes))
+    # Fixed/protected successors are already reserved, but still need their prerequisites first.
+    for successor in placements:
+        if activity.activity_id in successor.activity.dependencies:
+            upper = min(
+                upper,
+                successor.starts_at.astimezone(UTC) - timedelta(minutes=activity.duration_minutes),
+            )
+    return lower, upper
+
+
 def overlaps(left: Placement, right: Placement) -> bool:
     """Return whether two complete activity reservations overlap in real time."""
     return left.reservation_start.astimezone(UTC) < right.reservation_end.astimezone(
         UTC
     ) and right.reservation_start.astimezone(UTC) < left.reservation_end.astimezone(UTC)
+
+
+def hard_deadline(activity: PlanActivity, request: DayPlanRequest) -> datetime | None:
+    """Relax only explicitly selected deadlines already missed before this planning window."""
+    if activity.deadline is None:
+        return None
+    deadline = activity.deadline.astimezone(UTC)
+    if activity.recover_missed_deadline and deadline < request.window_start.astimezone(UTC):
+        return None
+    return deadline
+
+
+def satisfies_time_bounds(placement: Placement, request: DayPlanRequest) -> bool:
+    """Apply the same hard start/finish contract to fixed and flexible activities."""
+    activity = placement.activity
+    starts_at, ends_at = placement.starts_at.astimezone(UTC), placement.ends_at.astimezone(UTC)
+    deadline = hard_deadline(activity, request)
+    return (
+        (activity.earliest_start is None or starts_at >= activity.earliest_start.astimezone(UTC))
+        and (activity.latest_end is None or ends_at <= activity.latest_end.astimezone(UTC))
+        and (deadline is None or ends_at <= deadline)
+    )
+
+
+def invalid_dependencies(placements: list[Placement]) -> frozenset[str]:
+    """Reject incomplete or reversed dependencies, including fixed events and cycles."""
+    by_id = {placement.activity.activity_id: placement for placement in placements}
+    return frozenset(
+        placement.activity.activity_id
+        for placement in placements
+        if any(
+            dependency not in by_id
+            or by_id[dependency].ends_at.astimezone(UTC) > placement.starts_at.astimezone(UTC)
+            for dependency in placement.activity.dependencies
+        )
+    )

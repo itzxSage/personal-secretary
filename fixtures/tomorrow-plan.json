@@ -56,7 +56,8 @@
             "display_title": null,
             "guidance": [],
             "calendar_eligible": true,
-            "personal_micro_event": false
+            "personal_micro_event": false,
+            "recover_missed_deadline": false
           },
           {
             "activity_id": "farmers",
@@ -78,7 +79,8 @@
             "display_title": null,
             "guidance": [],
             "calendar_eligible": true,
-            "personal_micro_event": false
+            "personal_micro_event": false,
+            "recover_missed_deadline": false
           },
           {
             "activity_id": "workout",
@@ -100,7 +102,8 @@
             "display_title": null,
             "guidance": [],
             "calendar_eligible": true,
-            "personal_micro_event": false
+            "personal_micro_event": false,
+            "recover_missed_deadline": false
           },
           {
             "activity_id": "dinner",
@@ -122,7 +125,8 @@
             "display_title": null,
             "guidance": [],
             "calendar_eligible": true,
-            "personal_micro_event": false
+            "personal_micro_event": false,
+            "recover_missed_deadline": false
           }
         ],
         "energy_windows": [],
@@ -165,7 +169,8 @@
             "display_title": null,
             "guidance": [],
             "calendar_eligible": true,
-            "personal_micro_event": false
+            "personal_micro_event": false,
+            "recover_missed_deadline": false
           },
           {
             "activity_id": "farmers",
@@ -187,7 +192,8 @@
             "display_title": null,
             "guidance": [],
             "calendar_eligible": true,
-            "personal_micro_event": false
+            "personal_micro_event": false,
+            "recover_missed_deadline": false
           },
           {
             "activity_id": "workout",
@@ -209,7 +215,8 @@
             "display_title": null,
             "guidance": [],
             "calendar_eligible": true,
-            "personal_micro_event": false
+            "personal_micro_event": false,
+            "recover_missed_deadline": false
           },
           {
             "activity_id": "dinner",
@@ -231,7 +238,8 @@
             "display_title": null,
             "guidance": [],
             "calendar_eligible": true,
-            "personal_micro_event": false
+            "personal_micro_event": false,
+            "recover_missed_deadline": false
           }
         ],
         "energy_windows": [],
@@ -411,7 +419,8 @@
               "display_title": null,
               "guidance": [],
               "calendar_eligible": true,
-              "personal_micro_event": false
+              "personal_micro_event": false,
+              "recover_missed_deadline": false
             },
             {
               "activity_id": "farmers",
@@ -433,7 +442,8 @@
               "display_title": null,
               "guidance": [],
               "calendar_eligible": true,
-              "personal_micro_event": false
+              "personal_micro_event": false,
+              "recover_missed_deadline": false
             },
             {
               "activity_id": "workout",
@@ -455,7 +465,8 @@
               "display_title": null,
               "guidance": [],
               "calendar_eligible": true,
-              "personal_micro_event": false
+              "personal_micro_event": false,
+              "recover_missed_deadline": false
             },
             {
               "activity_id": "dinner",
@@ -477,7 +488,8 @@
               "display_title": null,
               "guidance": [],
               "calendar_eligible": true,
-              "personal_micro_event": false
+              "personal_micro_event": false,
+              "recover_missed_deadline": false
             }
           ],
           "energy_windows": [],
@@ -497,7 +509,7 @@
       },
       "plan": {
         "schema_version": "lifeos.proposed-day.v1",
-        "input_fingerprint": "d2524ca55aa3ef4d064e735341c58b599c9fba8ae4663335d61af8a832018047",
+        "input_fingerprint": "51bac453df7027cf6967e08836a862f78ea50f028732e641595331792713e9e2",
         "state_revision": 7,
         "timezone": "America/New_York",
         "status": "feasible",
@@ -995,7 +1007,8 @@
                 "display_title": null,
                 "guidance": [],
                 "calendar_eligible": true,
-                "personal_micro_event": false
+                "personal_micro_event": false,
+                "recover_missed_deadline": false
               },
               {
                 "activity_id": "farmers",
@@ -1017,7 +1030,8 @@
                 "display_title": null,
                 "guidance": [],
                 "calendar_eligible": true,
-                "personal_micro_event": false
+                "personal_micro_event": false,
+                "recover_missed_deadline": false
               },
               {
                 "activity_id": "workout",
@@ -1039,7 +1053,8 @@
                 "display_title": null,
                 "guidance": [],
                 "calendar_eligible": true,
-                "personal_micro_event": false
+                "personal_micro_event": false,
+                "recover_missed_deadline": false
               },
               {
                 "activity_id": "dinner",
@@ -1061,7 +1076,8 @@
                 "display_title": null,
                 "guidance": [],
                 "calendar_eligible": true,
-                "personal_micro_event": false
+                "personal_micro_event": false,
+                "recover_missed_deadline": false
               }
             ],
             "energy_windows": [],
@@ -1110,7 +1126,7 @@
         },
         "plan": {
           "schema_version": "lifeos.proposed-day.v1",
-          "input_fingerprint": "85d3b8b1a7709b1d1be17f2d7490b0b43924be618088e90ed903fae0712f20f6",
+          "input_fingerprint": "648d997627b19750c56e90408df1094d8448268ca3d0fd1fdc5c724bd65a7a8b",
           "state_revision": 8,
           "timezone": "America/New_York",
           "status": "feasible",
