@@ -1,0 +1,700 @@
+{
+  "contract_version": "1.0.0",
+  "conversation": {
+    "conversation_id": "55555555-5555-4555-8555-555555555555",
+    "title": "Morning planning",
+    "participant_ids": [
+      "11111111-1111-4111-8111-111111111111",
+      "22222222-2222-4222-8222-222222222222"
+    ],
+    "device_ids": [
+      "33333333-3333-4333-8333-333333333333",
+      "44444444-4444-4444-8444-444444444444"
+    ],
+    "created_at": "2026-09-05T12:00:00Z",
+    "state": "active"
+  },
+  "devices": [
+    {
+      "device_id": "33333333-3333-4333-8333-333333333333",
+      "participant_id": "11111111-1111-4111-8111-111111111111",
+      "kind": "ios",
+      "name": "iPhone",
+      "created_at": "2026-09-05T12:00:00Z"
+    },
+    {
+      "device_id": "44444444-4444-4444-8444-444444444444",
+      "participant_id": "11111111-1111-4111-8111-111111111111",
+      "kind": "mac",
+      "name": "MacBook",
+      "created_at": "2026-09-05T12:00:00Z"
+    }
+  ],
+  "participants": [
+    {
+      "participant_id": "11111111-1111-4111-8111-111111111111",
+      "kind": "user",
+      "display_name": "Jared",
+      "created_at": "2026-09-05T12:00:00Z"
+    },
+    {
+      "participant_id": "22222222-2222-4222-8222-222222222222",
+      "kind": "agent",
+      "display_name": "LifeOS",
+      "created_at": "2026-09-05T12:00:00Z"
+    }
+  ],
+  "channel_binding": {
+    "binding_id": "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    "conversation_id": "55555555-5555-4555-8555-555555555555",
+    "channel_kind": "telegram",
+    "external_channel_id": "telegram-channel-42",
+    "external_user_id": "telegram-user-7",
+    "bound_at": "2026-09-05T12:00:00Z",
+    "state": "active"
+  },
+  "cases": [
+    {
+      "name": "accepted_cross_device",
+      "events": [
+        {
+          "event_id": "66666666-6666-4666-8666-000000000001",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 1,
+          "occurred_at": "2026-09-05T12:00:01Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "what's left",
+            "is_final": false
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000002",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "44444444-4444-4444-8444-444444444444",
+          "sequence": 2,
+          "occurred_at": "2026-09-05T12:00:02Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "what's left today",
+            "is_final": false
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000003",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 3,
+          "occurred_at": "2026-09-05T12:00:03Z",
+          "kind": "transcript_final",
+          "payload": {
+            "kind": "transcript_final",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "what's left today",
+            "is_final": true
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000004",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "44444444-4444-4444-8444-444444444444",
+          "sequence": 4,
+          "occurred_at": "2026-09-05T12:00:04Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            "text": "move workout",
+            "is_final": false
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000005",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "44444444-4444-4444-8444-444444444444",
+          "sequence": 5,
+          "occurred_at": "2026-09-05T12:00:05Z",
+          "kind": "transcript_final",
+          "payload": {
+            "kind": "transcript_final",
+            "turn_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            "text": "move workout to 6pm",
+            "is_final": true
+          }
+        }
+      ],
+      "expected": [
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 2
+        },
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 3
+        },
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 4
+        },
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 5
+        },
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 6
+        }
+      ]
+    },
+    {
+      "name": "rejected_duplicate",
+      "events": [
+        {
+          "event_id": "66666666-6666-4666-8666-000000000001",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 1,
+          "occurred_at": "2026-09-05T12:00:01Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "hello",
+            "is_final": false
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000001",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 1,
+          "occurred_at": "2026-09-05T12:00:01Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "hello",
+            "is_final": false
+          }
+        }
+      ],
+      "expected": [
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 2
+        },
+        {
+          "accepted": false,
+          "rejection": "duplicate_event",
+          "next_sequence": 2
+        }
+      ]
+    },
+    {
+      "name": "rejected_out_of_order",
+      "events": [
+        {
+          "event_id": "66666666-6666-4666-8666-000000000001",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 1,
+          "occurred_at": "2026-09-05T12:00:01Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "one",
+            "is_final": false
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000003",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 3,
+          "occurred_at": "2026-09-05T12:00:03Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "three",
+            "is_final": false
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000002",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 2,
+          "occurred_at": "2026-09-05T12:00:02Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "two",
+            "is_final": false
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000002",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 2,
+          "occurred_at": "2026-09-05T12:00:02Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "two again",
+            "is_final": false
+          }
+        }
+      ],
+      "expected": [
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 2
+        },
+        {
+          "accepted": false,
+          "rejection": "out_of_order",
+          "next_sequence": 2
+        },
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 3
+        },
+        {
+          "accepted": false,
+          "rejection": "duplicate_event",
+          "next_sequence": 3
+        }
+      ]
+    },
+    {
+      "name": "rejected_foreign_participant",
+      "events": [
+        {
+          "event_id": "66666666-6666-4666-8666-000000000001",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "99999999-9999-4999-8999-999999999999",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 1,
+          "occurred_at": "2026-09-05T12:00:01Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "intruder",
+            "is_final": false
+          }
+        }
+      ],
+      "expected": [
+        {
+          "accepted": false,
+          "rejection": "foreign_participant",
+          "next_sequence": 1
+        }
+      ]
+    },
+    {
+      "name": "rejected_foreign_device",
+      "events": [
+        {
+          "event_id": "66666666-6666-4666-8666-000000000001",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "88888888-8888-4888-8888-888888888888",
+          "sequence": 1,
+          "occurred_at": "2026-09-05T12:00:01Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "stray device",
+            "is_final": false
+          }
+        }
+      ],
+      "expected": [
+        {
+          "accepted": false,
+          "rejection": "foreign_device",
+          "next_sequence": 1
+        }
+      ]
+    },
+    {
+      "name": "rejected_device_participant_mismatch",
+      "events": [
+        {
+          "event_id": "66666666-6666-4666-8666-000000000001",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "22222222-2222-4222-8222-222222222222",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 1,
+          "occurred_at": "2026-09-05T12:00:01Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "agent on user phone",
+            "is_final": false
+          }
+        }
+      ],
+      "expected": [
+        {
+          "accepted": false,
+          "rejection": "device_participant_mismatch",
+          "next_sequence": 1
+        }
+      ]
+    },
+    {
+      "name": "rejected_kind_mismatch",
+      "events": [
+        {
+          "event_id": "66666666-6666-4666-8666-000000000001",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 1,
+          "occurred_at": "2026-09-05T12:00:01Z",
+          "kind": "transcript_final",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "envelope lies",
+            "is_final": false
+          }
+        }
+      ],
+      "expected": [
+        {
+          "accepted": false,
+          "rejection": "kind_mismatch",
+          "next_sequence": 1
+        }
+      ]
+    },
+    {
+      "name": "rejected_final_without_partial",
+      "events": [
+        {
+          "event_id": "66666666-6666-4666-8666-000000000001",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 1,
+          "occurred_at": "2026-09-05T12:00:01Z",
+          "kind": "transcript_final",
+          "payload": {
+            "kind": "transcript_final",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "final without partial",
+            "is_final": true
+          }
+        }
+      ],
+      "expected": [
+        {
+          "accepted": false,
+          "rejection": "final_without_partial",
+          "next_sequence": 1
+        }
+      ]
+    },
+    {
+      "name": "rejected_event_after_cancellation",
+      "events": [
+        {
+          "event_id": "66666666-6666-4666-8666-000000000001",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 1,
+          "occurred_at": "2026-09-05T12:00:01Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "start",
+            "is_final": false
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000002",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 2,
+          "occurred_at": "2026-09-05T12:00:02Z",
+          "kind": "cancellation",
+          "payload": {
+            "kind": "cancellation",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "reason": "barge-in"
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000003",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 3,
+          "occurred_at": "2026-09-05T12:00:03Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "after cancel",
+            "is_final": false
+          }
+        }
+      ],
+      "expected": [
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 2
+        },
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 3
+        },
+        {
+          "accepted": false,
+          "rejection": "event_after_cancellation",
+          "next_sequence": 3
+        }
+      ]
+    },
+    {
+      "name": "rejected_resume_without_cancellation",
+      "events": [
+        {
+          "event_id": "66666666-6666-4666-8666-000000000001",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 1,
+          "occurred_at": "2026-09-05T12:00:01Z",
+          "kind": "resume",
+          "payload": {
+            "kind": "resume",
+            "turn_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            "resume_from_turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "accepted": false,
+          "rejection": "resume_without_cancellation",
+          "next_sequence": 1
+        }
+      ]
+    },
+    {
+      "name": "accepted_cancel_resume",
+      "events": [
+        {
+          "event_id": "66666666-6666-4666-8666-000000000001",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 1,
+          "occurred_at": "2026-09-05T12:00:01Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "text": "start",
+            "is_final": false
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000002",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 2,
+          "occurred_at": "2026-09-05T12:00:02Z",
+          "kind": "cancellation",
+          "payload": {
+            "kind": "cancellation",
+            "turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "reason": "barge-in"
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000003",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 3,
+          "occurred_at": "2026-09-05T12:00:03Z",
+          "kind": "resume",
+          "payload": {
+            "kind": "resume",
+            "turn_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            "resume_from_turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000004",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 4,
+          "occurred_at": "2026-09-05T12:00:04Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            "text": "resumed",
+            "is_final": false
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000005",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 5,
+          "occurred_at": "2026-09-05T12:00:05Z",
+          "kind": "transcript_final",
+          "payload": {
+            "kind": "transcript_final",
+            "turn_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            "text": "resumed and final",
+            "is_final": true
+          }
+        }
+      ],
+      "expected": [
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 2
+        },
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 3
+        },
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 4
+        },
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 5
+        },
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 6
+        }
+      ]
+    },
+    {
+      "name": "accepted_mixed_payloads",
+      "events": [
+        {
+          "event_id": "66666666-6666-4666-8666-000000000001",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 1,
+          "occurred_at": "2026-09-05T12:00:01Z",
+          "kind": "attachment",
+          "payload": {
+            "kind": "attachment",
+            "attachment_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+            "mime_type": "image/png",
+            "size_bytes": 2048,
+            "reference": "lifeos://attachment/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000002",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 2,
+          "occurred_at": "2026-09-05T12:00:02Z",
+          "kind": "tool_result",
+          "payload": {
+            "kind": "tool_result",
+            "tool_call_id": "tool-call-1",
+            "tool_name": "calendar_propose",
+            "status": "ok",
+            "result_reference": "lifeos://proposal/55555555-5555-4555-8555-555555555555"
+          }
+        },
+        {
+          "event_id": "66666666-6666-4666-8666-000000000003",
+          "conversation_id": "55555555-5555-4555-8555-555555555555",
+          "participant_id": "11111111-1111-4111-8111-111111111111",
+          "device_id": "33333333-3333-4333-8333-333333333333",
+          "sequence": 3,
+          "occurred_at": "2026-09-05T12:00:03Z",
+          "kind": "error",
+          "payload": {
+            "kind": "error",
+            "code": "provider_unavailable",
+            "message": "realtime provider unreachable",
+            "retryable": true
+          }
+        }
+      ],
+      "expected": [
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 2
+        },
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 3
+        },
+        {
+          "accepted": true,
+          "rejection": null,
+          "next_sequence": 4
+        }
+      ]
+    }
+  ]
+}

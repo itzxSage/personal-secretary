@@ -1,0 +1,7 @@
+[
+  {"evidence": "native/report.json", "reason": "The generated iOS app project still requires user-selected signing, widget-extension packaging, simulator UI/voice tests and paired-device invocation evidence; project generation and SwiftPM tests alone do not establish these."},
+  {"evidence": "transport/report.json", "reason": "Persistent signed mTLS text ingress, signed deletion, fixed retention, encrypted history and opt-in Swift delivery have local coverage. WebSocket/audio, native pairing/device-to-Mac integration, scheduled expiry, backup lifecycle, nonce expiry and conflict resolution still require completion and evidence."},
+  {"evidence": "providers/report.json", "reason": "Google OAuth refresh and dedicated-calendar creation/readback were live-verified without event writes, but Google event lifecycle/service wiring and real OpenAI configuration/evidence remain outstanding; realtime is unfinished and current end-to-end flows use deterministic fixtures."},
+  {"evidence": "durable-authority/report.json", "reason": "Enrollment and calendar/rollout approval markers now persist, but voice lease consumption and atomic approval-to-execution crash reconciliation still require production integration and evidence."},
+  {"evidence": "fabric/report.json", "reason": "The actual pinned OpenClaw sidecar and channel transports require live adapter isolation/reconnect evidence; existing adapters are tested in process."}
+]

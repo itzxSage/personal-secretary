@@ -1,0 +1,1499 @@
+{
+  "clock": {
+    "current": "2026-09-06T20:00:00Z"
+  },
+  "conversation": {
+    "conversation_id": "00000000-0000-0000-0000-000000000800",
+    "title": "Tomorrow planning",
+    "participant_ids": [
+      "00000000-0000-0000-0000-000000000801"
+    ],
+    "device_ids": [
+      "00000000-0000-0000-0000-000000000802"
+    ],
+    "created_at": "2026-09-06T20:00:00Z",
+    "state": "active"
+  },
+  "devices": [
+    {
+      "device_id": "00000000-0000-0000-0000-000000000802",
+      "participant_id": "00000000-0000-0000-0000-000000000801",
+      "kind": "ios",
+      "name": "iPhone",
+      "created_at": "2026-09-06T20:00:00Z"
+    }
+  ],
+  "interpretations": [
+    {
+      "text": "Plan tomorrow: work 9am to 5pm, farmers market 5:15 to 5:45pm, gym workout, dinner with Sam at 7pm",
+      "proposal_id": "00000000-0000-0000-0000-000000000901",
+      "provider_version": "lifeos.interpretation.v1",
+      "plan_request": {
+        "plan_date": "2026-09-07",
+        "timezone": "America/New_York",
+        "window_start": "2026-09-07T06:00:00-04:00",
+        "window_end": "2026-09-07T22:00:00-04:00",
+        "state_revision": 7,
+        "expected_state_revision": 7,
+        "activities": [
+          {
+            "activity_id": "work",
+            "title": "Work",
+            "flexibility": "fixed",
+            "duration_minutes": 480,
+            "fixed_start": "2026-09-07T09:00:00-04:00",
+            "fixed_end": "2026-09-07T17:00:00-04:00",
+            "earliest_start": null,
+            "latest_end": null,
+            "deadline": null,
+            "dependencies": [],
+            "travel_minutes_before": 0,
+            "travel_minutes_after": 0,
+            "energy_required": 1,
+            "goal_weight": 0,
+            "importance": 0,
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "calendar_eligible": true,
+            "personal_micro_event": false
+          },
+          {
+            "activity_id": "farmers",
+            "title": "Farmers market",
+            "flexibility": "protected",
+            "duration_minutes": 30,
+            "fixed_start": "2026-09-07T17:15:00-04:00",
+            "fixed_end": "2026-09-07T17:45:00-04:00",
+            "earliest_start": null,
+            "latest_end": null,
+            "deadline": null,
+            "dependencies": [],
+            "travel_minutes_before": 0,
+            "travel_minutes_after": 0,
+            "energy_required": 1,
+            "goal_weight": 0,
+            "importance": 0,
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "calendar_eligible": true,
+            "personal_micro_event": false
+          },
+          {
+            "activity_id": "workout",
+            "title": "Gym workout",
+            "flexibility": "flexible",
+            "duration_minutes": 60,
+            "fixed_start": null,
+            "fixed_end": null,
+            "earliest_start": null,
+            "latest_end": null,
+            "deadline": null,
+            "dependencies": [],
+            "travel_minutes_before": 0,
+            "travel_minutes_after": 0,
+            "energy_required": 1,
+            "goal_weight": 0,
+            "importance": 0,
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "calendar_eligible": true,
+            "personal_micro_event": false
+          },
+          {
+            "activity_id": "dinner",
+            "title": "Dinner with Sam",
+            "flexibility": "flexible",
+            "duration_minutes": 90,
+            "fixed_start": null,
+            "fixed_end": null,
+            "earliest_start": null,
+            "latest_end": null,
+            "deadline": null,
+            "dependencies": [],
+            "travel_minutes_before": 0,
+            "travel_minutes_after": 0,
+            "energy_required": 1,
+            "goal_weight": 0,
+            "importance": 0,
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "calendar_eligible": true,
+            "personal_micro_event": false
+          }
+        ],
+        "energy_windows": [],
+        "baseline_blocks": [],
+        "schedule_resolution": {
+          "internal_plan": "minute-level",
+          "calendar_projection": "human-readable-blocks"
+        }
+      }
+    },
+    {
+      "text": "Work shift changed to 8am to 4pm tomorrow",
+      "proposal_id": "00000000-0000-0000-0000-000000000902",
+      "provider_version": "lifeos.interpretation.v1",
+      "plan_request": {
+        "plan_date": "2026-09-07",
+        "timezone": "America/New_York",
+        "window_start": "2026-09-07T06:00:00-04:00",
+        "window_end": "2026-09-07T22:00:00-04:00",
+        "state_revision": 8,
+        "expected_state_revision": 8,
+        "activities": [
+          {
+            "activity_id": "work",
+            "title": "Work",
+            "flexibility": "fixed",
+            "duration_minutes": 480,
+            "fixed_start": "2026-09-07T08:00:00-04:00",
+            "fixed_end": "2026-09-07T16:00:00-04:00",
+            "earliest_start": null,
+            "latest_end": null,
+            "deadline": null,
+            "dependencies": [],
+            "travel_minutes_before": 0,
+            "travel_minutes_after": 0,
+            "energy_required": 1,
+            "goal_weight": 0,
+            "importance": 0,
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "calendar_eligible": true,
+            "personal_micro_event": false
+          },
+          {
+            "activity_id": "farmers",
+            "title": "Farmers market",
+            "flexibility": "protected",
+            "duration_minutes": 30,
+            "fixed_start": "2026-09-07T17:15:00-04:00",
+            "fixed_end": "2026-09-07T17:45:00-04:00",
+            "earliest_start": null,
+            "latest_end": null,
+            "deadline": null,
+            "dependencies": [],
+            "travel_minutes_before": 0,
+            "travel_minutes_after": 0,
+            "energy_required": 1,
+            "goal_weight": 0,
+            "importance": 0,
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "calendar_eligible": true,
+            "personal_micro_event": false
+          },
+          {
+            "activity_id": "workout",
+            "title": "Gym workout",
+            "flexibility": "flexible",
+            "duration_minutes": 60,
+            "fixed_start": null,
+            "fixed_end": null,
+            "earliest_start": null,
+            "latest_end": null,
+            "deadline": null,
+            "dependencies": [],
+            "travel_minutes_before": 0,
+            "travel_minutes_after": 0,
+            "energy_required": 1,
+            "goal_weight": 0,
+            "importance": 0,
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "calendar_eligible": true,
+            "personal_micro_event": false
+          },
+          {
+            "activity_id": "dinner",
+            "title": "Dinner with Sam",
+            "flexibility": "flexible",
+            "duration_minutes": 90,
+            "fixed_start": null,
+            "fixed_end": null,
+            "earliest_start": null,
+            "latest_end": null,
+            "deadline": null,
+            "dependencies": [],
+            "travel_minutes_before": 0,
+            "travel_minutes_after": 0,
+            "energy_required": 1,
+            "goal_weight": 0,
+            "importance": 0,
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "calendar_eligible": true,
+            "personal_micro_event": false
+          }
+        ],
+        "energy_windows": [],
+        "baseline_blocks": [
+          {
+            "block_id": "activity:dinner",
+            "activity_id": "dinner",
+            "title": "Dinner with Sam",
+            "starts_at": "2026-09-07T06:00:00-04:00",
+            "ends_at": "2026-09-07T07:30:00-04:00"
+          },
+          {
+            "block_id": "activity:workout",
+            "activity_id": "workout",
+            "title": "Gym workout",
+            "starts_at": "2026-09-07T07:30:00-04:00",
+            "ends_at": "2026-09-07T08:30:00-04:00"
+          },
+          {
+            "block_id": "activity:work",
+            "activity_id": "work",
+            "title": "Work",
+            "starts_at": "2026-09-07T09:00:00-04:00",
+            "ends_at": "2026-09-07T17:00:00-04:00"
+          },
+          {
+            "block_id": "activity:farmers",
+            "activity_id": "farmers",
+            "title": "Farmers market",
+            "starts_at": "2026-09-07T17:15:00-04:00",
+            "ends_at": "2026-09-07T17:45:00-04:00"
+          }
+        ],
+        "schedule_resolution": {
+          "internal_plan": "minute-level",
+          "calendar_projection": "human-readable-blocks"
+        }
+      }
+    }
+  ],
+  "initial_capture": {
+    "events": [
+      {
+        "event_id": "00000000-0000-0000-0000-000000000811",
+        "conversation_id": "00000000-0000-0000-0000-000000000800",
+        "participant_id": "00000000-0000-0000-0000-000000000801",
+        "device_id": "00000000-0000-0000-0000-000000000802",
+        "sequence": 1,
+        "occurred_at": "2026-09-06T20:00:00Z",
+        "kind": "transcript_partial",
+        "payload": {
+          "kind": "transcript_partial",
+          "turn_id": "00000000-0000-0000-0000-000000000803",
+          "text": "Plan tomorrow: work 9am to 5pm, farmers market 5:15 to 5:45pm, gym workout, dinner with Sam at 7pm",
+          "is_final": false
+        }
+      },
+      {
+        "event_id": "00000000-0000-0000-0000-000000000812",
+        "conversation_id": "00000000-0000-0000-0000-000000000800",
+        "participant_id": "00000000-0000-0000-0000-000000000801",
+        "device_id": "00000000-0000-0000-0000-000000000802",
+        "sequence": 2,
+        "occurred_at": "2026-09-06T20:00:00Z",
+        "kind": "transcript_final",
+        "payload": {
+          "kind": "transcript_final",
+          "turn_id": "00000000-0000-0000-0000-000000000803",
+          "text": "Plan tomorrow: work 9am to 5pm, farmers market 5:15 to 5:45pm, gym workout, dinner with Sam at 7pm",
+          "is_final": true
+        }
+      }
+    ]
+  },
+  "replan": {
+    "previous_proposal_id": "00000000-0000-0000-0000-000000000901",
+    "capture": {
+      "events": [
+        {
+          "event_id": "00000000-0000-0000-0000-000000000821",
+          "conversation_id": "00000000-0000-0000-0000-000000000800",
+          "participant_id": "00000000-0000-0000-0000-000000000801",
+          "device_id": "00000000-0000-0000-0000-000000000802",
+          "sequence": 1,
+          "occurred_at": "2026-09-06T20:00:00Z",
+          "kind": "transcript_partial",
+          "payload": {
+            "kind": "transcript_partial",
+            "turn_id": "00000000-0000-0000-0000-000000000804",
+            "text": "Work shift changed to 8am to 4pm tomorrow",
+            "is_final": false
+          }
+        },
+        {
+          "event_id": "00000000-0000-0000-0000-000000000822",
+          "conversation_id": "00000000-0000-0000-0000-000000000800",
+          "participant_id": "00000000-0000-0000-0000-000000000801",
+          "device_id": "00000000-0000-0000-0000-000000000802",
+          "sequence": 2,
+          "occurred_at": "2026-09-06T20:00:00Z",
+          "kind": "transcript_final",
+          "payload": {
+            "kind": "transcript_final",
+            "turn_id": "00000000-0000-0000-0000-000000000804",
+            "text": "Work shift changed to 8am to 4pm tomorrow",
+            "is_final": true
+          }
+        }
+      ]
+    }
+  },
+  "approval": {
+    "fact_id": "00000000-0000-0000-0000-000000000911",
+    "proposal_id": "00000000-0000-0000-0000-000000000901",
+    "payload_hash": "ec3e2700b6413c181c5ca90d89ee5195edebf1e9818b3c6751f9ce44cce218b0",
+    "issued_at": "2026-09-06T20:00:00Z",
+    "expires_at": "2026-09-06T20:05:00Z",
+    "idempotency_key": "approve-tomorrow-1",
+    "actor": "lifeos",
+    "correlation_id": "tomorrow-slice",
+    "signature": "f6209dcd84769ac06f0266810c1fd10eb64026757fdf5a26a5933464bb4849d7045014676a054f4fe18368d4840e9d68c6ff7901d36f55aae1cc4fa916e3af0c",
+    "proof": "device_signed",
+    "device_id": "iphone-1"
+  },
+  "rollback": {
+    "fact_id": "00000000-0000-0000-0000-000000000912",
+    "proposal_id": "00000000-0000-0000-0000-000000000901",
+    "payload_hash": "ec3e2700b6413c181c5ca90d89ee5195edebf1e9818b3c6751f9ce44cce218b0",
+    "issued_at": "2026-09-06T20:00:00Z",
+    "expires_at": "2026-09-06T20:05:00Z",
+    "idempotency_key": "rollback-tomorrow-1",
+    "actor": "lifeos",
+    "correlation_id": "tomorrow-slice",
+    "reason": "user requested undo"
+  },
+  "golden": {
+    "preview": {
+      "capture": {
+        "accepted_event_ids": [
+          "00000000-0000-0000-0000-000000000811",
+          "00000000-0000-0000-0000-000000000812"
+        ],
+        "next_sequence": 3,
+        "source_record_id": "00000000-0000-0000-0000-000000000812",
+        "text": "Plan tomorrow: work 9am to 5pm, farmers market 5:15 to 5:45pm, gym workout, dinner with Sam at 7pm",
+        "source_fingerprint": "80ef9ce3a79cc0076e98f6cd6d3f3190d02fb90a26a537163ede9a84904eb7a7"
+      },
+      "interpretation": {
+        "proposal_id": "00000000-0000-0000-0000-000000000901",
+        "source_event_id": "00000000-0000-0000-0000-000000000812",
+        "provider_version": "lifeos.interpretation.v1",
+        "plan_request": {
+          "plan_date": "2026-09-07",
+          "timezone": "America/New_York",
+          "window_start": "2026-09-07T06:00:00-04:00",
+          "window_end": "2026-09-07T22:00:00-04:00",
+          "state_revision": 7,
+          "expected_state_revision": 7,
+          "activities": [
+            {
+              "activity_id": "work",
+              "title": "Work",
+              "flexibility": "fixed",
+              "duration_minutes": 480,
+              "fixed_start": "2026-09-07T09:00:00-04:00",
+              "fixed_end": "2026-09-07T17:00:00-04:00",
+              "earliest_start": null,
+              "latest_end": null,
+              "deadline": null,
+              "dependencies": [],
+              "travel_minutes_before": 0,
+              "travel_minutes_after": 0,
+              "energy_required": 1,
+              "goal_weight": 0,
+              "importance": 0,
+              "display_group": null,
+              "display_title": null,
+              "guidance": [],
+              "calendar_eligible": true,
+              "personal_micro_event": false
+            },
+            {
+              "activity_id": "farmers",
+              "title": "Farmers market",
+              "flexibility": "protected",
+              "duration_minutes": 30,
+              "fixed_start": "2026-09-07T17:15:00-04:00",
+              "fixed_end": "2026-09-07T17:45:00-04:00",
+              "earliest_start": null,
+              "latest_end": null,
+              "deadline": null,
+              "dependencies": [],
+              "travel_minutes_before": 0,
+              "travel_minutes_after": 0,
+              "energy_required": 1,
+              "goal_weight": 0,
+              "importance": 0,
+              "display_group": null,
+              "display_title": null,
+              "guidance": [],
+              "calendar_eligible": true,
+              "personal_micro_event": false
+            },
+            {
+              "activity_id": "workout",
+              "title": "Gym workout",
+              "flexibility": "flexible",
+              "duration_minutes": 60,
+              "fixed_start": null,
+              "fixed_end": null,
+              "earliest_start": null,
+              "latest_end": null,
+              "deadline": null,
+              "dependencies": [],
+              "travel_minutes_before": 0,
+              "travel_minutes_after": 0,
+              "energy_required": 1,
+              "goal_weight": 0,
+              "importance": 0,
+              "display_group": null,
+              "display_title": null,
+              "guidance": [],
+              "calendar_eligible": true,
+              "personal_micro_event": false
+            },
+            {
+              "activity_id": "dinner",
+              "title": "Dinner with Sam",
+              "flexibility": "flexible",
+              "duration_minutes": 90,
+              "fixed_start": null,
+              "fixed_end": null,
+              "earliest_start": null,
+              "latest_end": null,
+              "deadline": null,
+              "dependencies": [],
+              "travel_minutes_before": 0,
+              "travel_minutes_after": 0,
+              "energy_required": 1,
+              "goal_weight": 0,
+              "importance": 0,
+              "display_group": null,
+              "display_title": null,
+              "guidance": [],
+              "calendar_eligible": true,
+              "personal_micro_event": false
+            }
+          ],
+          "energy_windows": [],
+          "baseline_blocks": [],
+          "schedule_resolution": {
+            "internal_plan": "minute-level",
+            "calendar_projection": "human-readable-blocks"
+          }
+        }
+      },
+      "authorization": {
+        "proposal_id": "00000000-0000-0000-0000-000000000901",
+        "action_class": "calendar.apply",
+        "payload": "[{\"ends_at\":\"2026-09-07T07:30:00-04:00\",\"event_key\":\"calendar-dinner-dinner\",\"starts_at\":\"2026-09-07T06:00:00-04:00\",\"summary\":\"Dinner with Sam\"},{\"ends_at\":\"2026-09-07T08:30:00-04:00\",\"event_key\":\"calendar-workout-workout\",\"starts_at\":\"2026-09-07T07:30:00-04:00\",\"summary\":\"Gym workout\"},{\"ends_at\":\"2026-09-07T17:00:00-04:00\",\"event_key\":\"calendar-work-work\",\"starts_at\":\"2026-09-07T09:00:00-04:00\",\"summary\":\"Work\"},{\"ends_at\":\"2026-09-07T17:45:00-04:00\",\"event_key\":\"calendar-farmers-farmers\",\"starts_at\":\"2026-09-07T17:15:00-04:00\",\"summary\":\"Farmers market\"}]",
+        "state": "proposed",
+        "created_at": "2026-09-06T20:00:00Z"
+      },
+      "plan": {
+        "schema_version": "lifeos.proposed-day.v1",
+        "input_fingerprint": "d2524ca55aa3ef4d064e735341c58b599c9fba8ae4663335d61af8a832018047",
+        "state_revision": 7,
+        "timezone": "America/New_York",
+        "status": "feasible",
+        "schedule_resolution": {
+          "internal_plan": "minute-level",
+          "calendar_projection": "human-readable-blocks"
+        },
+        "internal_plan": [
+          {
+            "block_id": "activity:dinner",
+            "activity_id": "dinner",
+            "title": "Dinner with Sam",
+            "kind": "flexible",
+            "starts_at": "2026-09-07T06:00:00-04:00",
+            "ends_at": "2026-09-07T07:30:00-04:00",
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "deadline": null,
+            "explanation_code": "scheduled",
+            "calendar_eligible": true,
+            "personal_micro_event": false
+          },
+          {
+            "block_id": "activity:workout",
+            "activity_id": "workout",
+            "title": "Gym workout",
+            "kind": "flexible",
+            "starts_at": "2026-09-07T07:30:00-04:00",
+            "ends_at": "2026-09-07T08:30:00-04:00",
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "deadline": null,
+            "explanation_code": "scheduled",
+            "calendar_eligible": true,
+            "personal_micro_event": false
+          },
+          {
+            "block_id": "available:2026-09-07T12:30:00+00:00",
+            "activity_id": null,
+            "title": "Available",
+            "kind": "available",
+            "starts_at": "2026-09-07T08:30:00-04:00",
+            "ends_at": "2026-09-07T09:00:00-04:00",
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "deadline": null,
+            "explanation_code": null,
+            "calendar_eligible": false,
+            "personal_micro_event": false
+          },
+          {
+            "block_id": "activity:work",
+            "activity_id": "work",
+            "title": "Work",
+            "kind": "fixed",
+            "starts_at": "2026-09-07T09:00:00-04:00",
+            "ends_at": "2026-09-07T17:00:00-04:00",
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "deadline": null,
+            "explanation_code": "fixed",
+            "calendar_eligible": true,
+            "personal_micro_event": false
+          },
+          {
+            "block_id": "available:2026-09-07T21:00:00+00:00",
+            "activity_id": null,
+            "title": "Available",
+            "kind": "available",
+            "starts_at": "2026-09-07T17:00:00-04:00",
+            "ends_at": "2026-09-07T17:15:00-04:00",
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "deadline": null,
+            "explanation_code": null,
+            "calendar_eligible": false,
+            "personal_micro_event": false
+          },
+          {
+            "block_id": "activity:farmers",
+            "activity_id": "farmers",
+            "title": "Farmers market",
+            "kind": "protected",
+            "starts_at": "2026-09-07T17:15:00-04:00",
+            "ends_at": "2026-09-07T17:45:00-04:00",
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "deadline": null,
+            "explanation_code": "protected",
+            "calendar_eligible": true,
+            "personal_micro_event": false
+          },
+          {
+            "block_id": "available:2026-09-07T21:45:00+00:00",
+            "activity_id": null,
+            "title": "Available",
+            "kind": "available",
+            "starts_at": "2026-09-07T17:45:00-04:00",
+            "ends_at": "2026-09-07T22:00:00-04:00",
+            "display_group": null,
+            "display_title": null,
+            "guidance": [],
+            "deadline": null,
+            "explanation_code": null,
+            "calendar_eligible": false,
+            "personal_micro_event": false
+          }
+        ],
+        "calendar_projection": [
+          {
+            "block_id": "calendar:dinner:dinner",
+            "display_group": "dinner",
+            "title": "Dinner with Sam",
+            "starts_at": "2026-09-07T06:00:00-04:00",
+            "ends_at": "2026-09-07T07:30:00-04:00",
+            "source_activity_ids": [
+              "dinner"
+            ],
+            "segment_titles": [
+              "Dinner with Sam"
+            ],
+            "transitions": [],
+            "deadlines": [],
+            "guidance": [],
+            "explanation_codes": [
+              "scheduled"
+            ]
+          },
+          {
+            "block_id": "calendar:workout:workout",
+            "display_group": "workout",
+            "title": "Gym workout",
+            "starts_at": "2026-09-07T07:30:00-04:00",
+            "ends_at": "2026-09-07T08:30:00-04:00",
+            "source_activity_ids": [
+              "workout"
+            ],
+            "segment_titles": [
+              "Gym workout"
+            ],
+            "transitions": [],
+            "deadlines": [],
+            "guidance": [],
+            "explanation_codes": [
+              "scheduled"
+            ]
+          },
+          {
+            "block_id": "calendar:work:work",
+            "display_group": "work",
+            "title": "Work",
+            "starts_at": "2026-09-07T09:00:00-04:00",
+            "ends_at": "2026-09-07T17:00:00-04:00",
+            "source_activity_ids": [
+              "work"
+            ],
+            "segment_titles": [
+              "Work"
+            ],
+            "transitions": [],
+            "deadlines": [],
+            "guidance": [],
+            "explanation_codes": [
+              "fixed"
+            ]
+          },
+          {
+            "block_id": "calendar:farmers:farmers",
+            "display_group": "farmers",
+            "title": "Farmers market",
+            "starts_at": "2026-09-07T17:15:00-04:00",
+            "ends_at": "2026-09-07T17:45:00-04:00",
+            "source_activity_ids": [
+              "farmers"
+            ],
+            "segment_titles": [
+              "Farmers market"
+            ],
+            "transitions": [],
+            "deadlines": [],
+            "guidance": [],
+            "explanation_codes": [
+              "protected"
+            ]
+          }
+        ],
+        "explanations": [
+          {
+            "activity_id": "work",
+            "code": "fixed",
+            "summary": "Kept at its fixed time and protected from flexible work.",
+            "score": {
+              "deadline": 0,
+              "dependency": 0,
+              "travel": 0,
+              "energy": 0,
+              "goal": 0,
+              "importance": 0,
+              "total": 0
+            },
+            "scheduled_block_ids": [
+              "activity:work"
+            ],
+            "constraints": [
+              "duration=480m",
+              "energy=1",
+              "goal_weight=0"
+            ]
+          },
+          {
+            "activity_id": "farmers",
+            "code": "protected",
+            "summary": "Preserved at its protected time before placing flexible work.",
+            "score": {
+              "deadline": 0,
+              "dependency": 0,
+              "travel": 0,
+              "energy": 0,
+              "goal": 0,
+              "importance": 0,
+              "total": 0
+            },
+            "scheduled_block_ids": [
+              "activity:farmers"
+            ],
+            "constraints": [
+              "duration=30m",
+              "energy=1",
+              "goal_weight=0"
+            ]
+          },
+          {
+            "activity_id": "workout",
+            "code": "scheduled",
+            "summary": "Placed in the highest-scoring available minute interval.",
+            "score": {
+              "deadline": 0,
+              "dependency": 0,
+              "travel": 0,
+              "energy": 0,
+              "goal": 0,
+              "importance": 0,
+              "total": 0
+            },
+            "scheduled_block_ids": [
+              "activity:workout"
+            ],
+            "constraints": [
+              "duration=60m",
+              "energy=1",
+              "goal_weight=0"
+            ]
+          },
+          {
+            "activity_id": "dinner",
+            "code": "scheduled",
+            "summary": "Placed in the highest-scoring available minute interval.",
+            "score": {
+              "deadline": 0,
+              "dependency": 0,
+              "travel": 0,
+              "energy": 0,
+              "goal": 0,
+              "importance": 0,
+              "total": 0
+            },
+            "scheduled_block_ids": [
+              "activity:dinner"
+            ],
+            "constraints": [
+              "duration=90m",
+              "energy=1",
+              "goal_weight=0"
+            ]
+          }
+        ],
+        "unscheduled": [],
+        "diff": {
+          "added": [
+            {
+              "block_id": "activity:dinner",
+              "activity_id": "dinner",
+              "title": "Dinner with Sam",
+              "starts_at": "2026-09-07T06:00:00-04:00",
+              "ends_at": "2026-09-07T07:30:00-04:00"
+            },
+            {
+              "block_id": "activity:farmers",
+              "activity_id": "farmers",
+              "title": "Farmers market",
+              "starts_at": "2026-09-07T17:15:00-04:00",
+              "ends_at": "2026-09-07T17:45:00-04:00"
+            },
+            {
+              "block_id": "activity:work",
+              "activity_id": "work",
+              "title": "Work",
+              "starts_at": "2026-09-07T09:00:00-04:00",
+              "ends_at": "2026-09-07T17:00:00-04:00"
+            },
+            {
+              "block_id": "activity:workout",
+              "activity_id": "workout",
+              "title": "Gym workout",
+              "starts_at": "2026-09-07T07:30:00-04:00",
+              "ends_at": "2026-09-07T08:30:00-04:00"
+            }
+          ],
+          "removed": [],
+          "moved": []
+        }
+      },
+      "calendar": {
+        "calendar_summary": "LifeOS Proposed",
+        "operations": [
+          {
+            "operation": "insert",
+            "event_id": "lifeosvlhf47i6evn9daa9pbnqfiojhuqjgoo4qb52s21g00j6dlbcebk0",
+            "before_summary": null,
+            "after_summary": "Dinner with Sam"
+          },
+          {
+            "operation": "insert",
+            "event_id": "lifeoskid7kv6kh3alb31h915ps0vf1lk6icl369vc50ae3a49l0unrmlg",
+            "before_summary": null,
+            "after_summary": "Gym workout"
+          },
+          {
+            "operation": "insert",
+            "event_id": "lifeosbm6q9rjg7a1b122l7vhmb3rvcki6r5jagjsfhrp91km2uh6uc080",
+            "before_summary": null,
+            "after_summary": "Work"
+          },
+          {
+            "operation": "insert",
+            "event_id": "lifeosi3qmnr06ru84vv0u6n46ihaalm9hqdv8gtotat8lpjemf0npaov0",
+            "before_summary": null,
+            "after_summary": "Farmers market"
+          }
+        ]
+      }
+    },
+    "apply": {
+      "authorization": {
+        "proposal_id": "00000000-0000-0000-0000-000000000901",
+        "action_class": "calendar.apply",
+        "payload": "[{\"ends_at\":\"2026-09-07T07:30:00-04:00\",\"event_key\":\"calendar-dinner-dinner\",\"starts_at\":\"2026-09-07T06:00:00-04:00\",\"summary\":\"Dinner with Sam\"},{\"ends_at\":\"2026-09-07T08:30:00-04:00\",\"event_key\":\"calendar-workout-workout\",\"starts_at\":\"2026-09-07T07:30:00-04:00\",\"summary\":\"Gym workout\"},{\"ends_at\":\"2026-09-07T17:00:00-04:00\",\"event_key\":\"calendar-work-work\",\"starts_at\":\"2026-09-07T09:00:00-04:00\",\"summary\":\"Work\"},{\"ends_at\":\"2026-09-07T17:45:00-04:00\",\"event_key\":\"calendar-farmers-farmers\",\"starts_at\":\"2026-09-07T17:15:00-04:00\",\"summary\":\"Farmers market\"}]",
+        "state": "applied",
+        "created_at": "2026-09-06T20:00:00Z"
+      },
+      "calendar": {
+        "operations": [
+          {
+            "operation": "insert",
+            "event_id": "lifeosvlhf47i6evn9daa9pbnqfiojhuqjgoo4qb52s21g00j6dlbcebk0",
+            "before_summary": null,
+            "after_summary": "Dinner with Sam"
+          },
+          {
+            "operation": "insert",
+            "event_id": "lifeoskid7kv6kh3alb31h915ps0vf1lk6icl369vc50ae3a49l0unrmlg",
+            "before_summary": null,
+            "after_summary": "Gym workout"
+          },
+          {
+            "operation": "insert",
+            "event_id": "lifeosbm6q9rjg7a1b122l7vhmb3rvcki6r5jagjsfhrp91km2uh6uc080",
+            "before_summary": null,
+            "after_summary": "Work"
+          },
+          {
+            "operation": "insert",
+            "event_id": "lifeosi3qmnr06ru84vv0u6n46ihaalm9hqdv8gtotat8lpjemf0npaov0",
+            "before_summary": null,
+            "after_summary": "Farmers market"
+          }
+        ],
+        "sync_state": {
+          "calendar_id": "lifeos-proposed-sandbox",
+          "next_sync_token": "4",
+          "events": [
+            {
+              "calendar_id": "lifeos-proposed-sandbox",
+              "event_id": "lifeosbm6q9rjg7a1b122l7vhmb3rvcki6r5jagjsfhrp91km2uh6uc080",
+              "summary": "Work",
+              "starts_at": "2026-09-07T09:00:00-04:00",
+              "ends_at": "2026-09-07T17:00:00-04:00",
+              "ownership": {
+                "owner_id": "lifeos-user",
+                "proposal_id": "00000000-0000-0000-0000-000000000901",
+                "payload_hash": "ec3e2700b6413c181c5ca90d89ee5195edebf1e9818b3c6751f9ce44cce218b0",
+                "event_key": "calendar-work-work"
+              },
+              "revision": "1",
+              "deleted": false
+            },
+            {
+              "calendar_id": "lifeos-proposed-sandbox",
+              "event_id": "lifeosi3qmnr06ru84vv0u6n46ihaalm9hqdv8gtotat8lpjemf0npaov0",
+              "summary": "Farmers market",
+              "starts_at": "2026-09-07T17:15:00-04:00",
+              "ends_at": "2026-09-07T17:45:00-04:00",
+              "ownership": {
+                "owner_id": "lifeos-user",
+                "proposal_id": "00000000-0000-0000-0000-000000000901",
+                "payload_hash": "ec3e2700b6413c181c5ca90d89ee5195edebf1e9818b3c6751f9ce44cce218b0",
+                "event_key": "calendar-farmers-farmers"
+              },
+              "revision": "1",
+              "deleted": false
+            },
+            {
+              "calendar_id": "lifeos-proposed-sandbox",
+              "event_id": "lifeoskid7kv6kh3alb31h915ps0vf1lk6icl369vc50ae3a49l0unrmlg",
+              "summary": "Gym workout",
+              "starts_at": "2026-09-07T07:30:00-04:00",
+              "ends_at": "2026-09-07T08:30:00-04:00",
+              "ownership": {
+                "owner_id": "lifeos-user",
+                "proposal_id": "00000000-0000-0000-0000-000000000901",
+                "payload_hash": "ec3e2700b6413c181c5ca90d89ee5195edebf1e9818b3c6751f9ce44cce218b0",
+                "event_key": "calendar-workout-workout"
+              },
+              "revision": "1",
+              "deleted": false
+            },
+            {
+              "calendar_id": "lifeos-proposed-sandbox",
+              "event_id": "lifeosvlhf47i6evn9daa9pbnqfiojhuqjgoo4qb52s21g00j6dlbcebk0",
+              "summary": "Dinner with Sam",
+              "starts_at": "2026-09-07T06:00:00-04:00",
+              "ends_at": "2026-09-07T07:30:00-04:00",
+              "ownership": {
+                "owner_id": "lifeos-user",
+                "proposal_id": "00000000-0000-0000-0000-000000000901",
+                "payload_hash": "ec3e2700b6413c181c5ca90d89ee5195edebf1e9818b3c6751f9ce44cce218b0",
+                "event_key": "calendar-dinner-dinner"
+              },
+              "revision": "1",
+              "deleted": false
+            }
+          ]
+        },
+        "attempts": 4
+      }
+    },
+    "replan": {
+      "previous_proposal_id": "00000000-0000-0000-0000-000000000901",
+      "preview": {
+        "capture": {
+          "accepted_event_ids": [
+            "00000000-0000-0000-0000-000000000821",
+            "00000000-0000-0000-0000-000000000822"
+          ],
+          "next_sequence": 3,
+          "source_record_id": "00000000-0000-0000-0000-000000000822",
+          "text": "Work shift changed to 8am to 4pm tomorrow",
+          "source_fingerprint": "8829cf8e66b13f3d046fa7a5ceacb7b61bfa9eafc80ccd73327195de62d43bba"
+        },
+        "interpretation": {
+          "proposal_id": "00000000-0000-0000-0000-000000000902",
+          "source_event_id": "00000000-0000-0000-0000-000000000822",
+          "provider_version": "lifeos.interpretation.v1",
+          "plan_request": {
+            "plan_date": "2026-09-07",
+            "timezone": "America/New_York",
+            "window_start": "2026-09-07T06:00:00-04:00",
+            "window_end": "2026-09-07T22:00:00-04:00",
+            "state_revision": 8,
+            "expected_state_revision": 8,
+            "activities": [
+              {
+                "activity_id": "work",
+                "title": "Work",
+                "flexibility": "fixed",
+                "duration_minutes": 480,
+                "fixed_start": "2026-09-07T08:00:00-04:00",
+                "fixed_end": "2026-09-07T16:00:00-04:00",
+                "earliest_start": null,
+                "latest_end": null,
+                "deadline": null,
+                "dependencies": [],
+                "travel_minutes_before": 0,
+                "travel_minutes_after": 0,
+                "energy_required": 1,
+                "goal_weight": 0,
+                "importance": 0,
+                "display_group": null,
+                "display_title": null,
+                "guidance": [],
+                "calendar_eligible": true,
+                "personal_micro_event": false
+              },
+              {
+                "activity_id": "farmers",
+                "title": "Farmers market",
+                "flexibility": "protected",
+                "duration_minutes": 30,
+                "fixed_start": "2026-09-07T17:15:00-04:00",
+                "fixed_end": "2026-09-07T17:45:00-04:00",
+                "earliest_start": null,
+                "latest_end": null,
+                "deadline": null,
+                "dependencies": [],
+                "travel_minutes_before": 0,
+                "travel_minutes_after": 0,
+                "energy_required": 1,
+                "goal_weight": 0,
+                "importance": 0,
+                "display_group": null,
+                "display_title": null,
+                "guidance": [],
+                "calendar_eligible": true,
+                "personal_micro_event": false
+              },
+              {
+                "activity_id": "workout",
+                "title": "Gym workout",
+                "flexibility": "flexible",
+                "duration_minutes": 60,
+                "fixed_start": null,
+                "fixed_end": null,
+                "earliest_start": null,
+                "latest_end": null,
+                "deadline": null,
+                "dependencies": [],
+                "travel_minutes_before": 0,
+                "travel_minutes_after": 0,
+                "energy_required": 1,
+                "goal_weight": 0,
+                "importance": 0,
+                "display_group": null,
+                "display_title": null,
+                "guidance": [],
+                "calendar_eligible": true,
+                "personal_micro_event": false
+              },
+              {
+                "activity_id": "dinner",
+                "title": "Dinner with Sam",
+                "flexibility": "flexible",
+                "duration_minutes": 90,
+                "fixed_start": null,
+                "fixed_end": null,
+                "earliest_start": null,
+                "latest_end": null,
+                "deadline": null,
+                "dependencies": [],
+                "travel_minutes_before": 0,
+                "travel_minutes_after": 0,
+                "energy_required": 1,
+                "goal_weight": 0,
+                "importance": 0,
+                "display_group": null,
+                "display_title": null,
+                "guidance": [],
+                "calendar_eligible": true,
+                "personal_micro_event": false
+              }
+            ],
+            "energy_windows": [],
+            "baseline_blocks": [
+              {
+                "block_id": "activity:dinner",
+                "activity_id": "dinner",
+                "title": "Dinner with Sam",
+                "starts_at": "2026-09-07T06:00:00-04:00",
+                "ends_at": "2026-09-07T07:30:00-04:00"
+              },
+              {
+                "block_id": "activity:workout",
+                "activity_id": "workout",
+                "title": "Gym workout",
+                "starts_at": "2026-09-07T07:30:00-04:00",
+                "ends_at": "2026-09-07T08:30:00-04:00"
+              },
+              {
+                "block_id": "activity:work",
+                "activity_id": "work",
+                "title": "Work",
+                "starts_at": "2026-09-07T09:00:00-04:00",
+                "ends_at": "2026-09-07T17:00:00-04:00"
+              },
+              {
+                "block_id": "activity:farmers",
+                "activity_id": "farmers",
+                "title": "Farmers market",
+                "starts_at": "2026-09-07T17:15:00-04:00",
+                "ends_at": "2026-09-07T17:45:00-04:00"
+              }
+            ],
+            "schedule_resolution": {
+              "internal_plan": "minute-level",
+              "calendar_projection": "human-readable-blocks"
+            }
+          }
+        },
+        "authorization": {
+          "proposal_id": "00000000-0000-0000-0000-000000000902",
+          "action_class": "calendar.apply",
+          "payload": "[{\"ends_at\":\"2026-09-07T07:30:00-04:00\",\"event_key\":\"calendar-dinner-dinner\",\"starts_at\":\"2026-09-07T06:00:00-04:00\",\"summary\":\"Dinner with Sam\"},{\"ends_at\":\"2026-09-07T16:00:00-04:00\",\"event_key\":\"calendar-work-work\",\"starts_at\":\"2026-09-07T08:00:00-04:00\",\"summary\":\"Work\"},{\"ends_at\":\"2026-09-07T17:00:00-04:00\",\"event_key\":\"calendar-workout-workout\",\"starts_at\":\"2026-09-07T16:00:00-04:00\",\"summary\":\"Gym workout\"},{\"ends_at\":\"2026-09-07T17:45:00-04:00\",\"event_key\":\"calendar-farmers-farmers\",\"starts_at\":\"2026-09-07T17:15:00-04:00\",\"summary\":\"Farmers market\"}]",
+          "state": "proposed",
+          "created_at": "2026-09-06T20:00:00Z"
+        },
+        "plan": {
+          "schema_version": "lifeos.proposed-day.v1",
+          "input_fingerprint": "85d3b8b1a7709b1d1be17f2d7490b0b43924be618088e90ed903fae0712f20f6",
+          "state_revision": 8,
+          "timezone": "America/New_York",
+          "status": "feasible",
+          "schedule_resolution": {
+            "internal_plan": "minute-level",
+            "calendar_projection": "human-readable-blocks"
+          },
+          "internal_plan": [
+            {
+              "block_id": "activity:dinner",
+              "activity_id": "dinner",
+              "title": "Dinner with Sam",
+              "kind": "flexible",
+              "starts_at": "2026-09-07T06:00:00-04:00",
+              "ends_at": "2026-09-07T07:30:00-04:00",
+              "display_group": null,
+              "display_title": null,
+              "guidance": [],
+              "deadline": null,
+              "explanation_code": "scheduled",
+              "calendar_eligible": true,
+              "personal_micro_event": false
+            },
+            {
+              "block_id": "available:2026-09-07T11:30:00+00:00",
+              "activity_id": null,
+              "title": "Available",
+              "kind": "available",
+              "starts_at": "2026-09-07T07:30:00-04:00",
+              "ends_at": "2026-09-07T08:00:00-04:00",
+              "display_group": null,
+              "display_title": null,
+              "guidance": [],
+              "deadline": null,
+              "explanation_code": null,
+              "calendar_eligible": false,
+              "personal_micro_event": false
+            },
+            {
+              "block_id": "activity:work",
+              "activity_id": "work",
+              "title": "Work",
+              "kind": "fixed",
+              "starts_at": "2026-09-07T08:00:00-04:00",
+              "ends_at": "2026-09-07T16:00:00-04:00",
+              "display_group": null,
+              "display_title": null,
+              "guidance": [],
+              "deadline": null,
+              "explanation_code": "fixed",
+              "calendar_eligible": true,
+              "personal_micro_event": false
+            },
+            {
+              "block_id": "activity:workout",
+              "activity_id": "workout",
+              "title": "Gym workout",
+              "kind": "flexible",
+              "starts_at": "2026-09-07T16:00:00-04:00",
+              "ends_at": "2026-09-07T17:00:00-04:00",
+              "display_group": null,
+              "display_title": null,
+              "guidance": [],
+              "deadline": null,
+              "explanation_code": "scheduled",
+              "calendar_eligible": true,
+              "personal_micro_event": false
+            },
+            {
+              "block_id": "available:2026-09-07T21:00:00+00:00",
+              "activity_id": null,
+              "title": "Available",
+              "kind": "available",
+              "starts_at": "2026-09-07T17:00:00-04:00",
+              "ends_at": "2026-09-07T17:15:00-04:00",
+              "display_group": null,
+              "display_title": null,
+              "guidance": [],
+              "deadline": null,
+              "explanation_code": null,
+              "calendar_eligible": false,
+              "personal_micro_event": false
+            },
+            {
+              "block_id": "activity:farmers",
+              "activity_id": "farmers",
+              "title": "Farmers market",
+              "kind": "protected",
+              "starts_at": "2026-09-07T17:15:00-04:00",
+              "ends_at": "2026-09-07T17:45:00-04:00",
+              "display_group": null,
+              "display_title": null,
+              "guidance": [],
+              "deadline": null,
+              "explanation_code": "protected",
+              "calendar_eligible": true,
+              "personal_micro_event": false
+            },
+            {
+              "block_id": "available:2026-09-07T21:45:00+00:00",
+              "activity_id": null,
+              "title": "Available",
+              "kind": "available",
+              "starts_at": "2026-09-07T17:45:00-04:00",
+              "ends_at": "2026-09-07T22:00:00-04:00",
+              "display_group": null,
+              "display_title": null,
+              "guidance": [],
+              "deadline": null,
+              "explanation_code": null,
+              "calendar_eligible": false,
+              "personal_micro_event": false
+            }
+          ],
+          "calendar_projection": [
+            {
+              "block_id": "calendar:dinner:dinner",
+              "display_group": "dinner",
+              "title": "Dinner with Sam",
+              "starts_at": "2026-09-07T06:00:00-04:00",
+              "ends_at": "2026-09-07T07:30:00-04:00",
+              "source_activity_ids": [
+                "dinner"
+              ],
+              "segment_titles": [
+                "Dinner with Sam"
+              ],
+              "transitions": [],
+              "deadlines": [],
+              "guidance": [],
+              "explanation_codes": [
+                "scheduled"
+              ]
+            },
+            {
+              "block_id": "calendar:work:work",
+              "display_group": "work",
+              "title": "Work",
+              "starts_at": "2026-09-07T08:00:00-04:00",
+              "ends_at": "2026-09-07T16:00:00-04:00",
+              "source_activity_ids": [
+                "work"
+              ],
+              "segment_titles": [
+                "Work"
+              ],
+              "transitions": [],
+              "deadlines": [],
+              "guidance": [],
+              "explanation_codes": [
+                "fixed"
+              ]
+            },
+            {
+              "block_id": "calendar:workout:workout",
+              "display_group": "workout",
+              "title": "Gym workout",
+              "starts_at": "2026-09-07T16:00:00-04:00",
+              "ends_at": "2026-09-07T17:00:00-04:00",
+              "source_activity_ids": [
+                "workout"
+              ],
+              "segment_titles": [
+                "Gym workout"
+              ],
+              "transitions": [],
+              "deadlines": [],
+              "guidance": [],
+              "explanation_codes": [
+                "scheduled"
+              ]
+            },
+            {
+              "block_id": "calendar:farmers:farmers",
+              "display_group": "farmers",
+              "title": "Farmers market",
+              "starts_at": "2026-09-07T17:15:00-04:00",
+              "ends_at": "2026-09-07T17:45:00-04:00",
+              "source_activity_ids": [
+                "farmers"
+              ],
+              "segment_titles": [
+                "Farmers market"
+              ],
+              "transitions": [],
+              "deadlines": [],
+              "guidance": [],
+              "explanation_codes": [
+                "protected"
+              ]
+            }
+          ],
+          "explanations": [
+            {
+              "activity_id": "work",
+              "code": "fixed",
+              "summary": "Kept at its fixed time and protected from flexible work.",
+              "score": {
+                "deadline": 0,
+                "dependency": 0,
+                "travel": 0,
+                "energy": 0,
+                "goal": 0,
+                "importance": 0,
+                "total": 0
+              },
+              "scheduled_block_ids": [
+                "activity:work"
+              ],
+              "constraints": [
+                "duration=480m",
+                "energy=1",
+                "goal_weight=0"
+              ]
+            },
+            {
+              "activity_id": "farmers",
+              "code": "protected",
+              "summary": "Preserved at its protected time before placing flexible work.",
+              "score": {
+                "deadline": 0,
+                "dependency": 0,
+                "travel": 0,
+                "energy": 0,
+                "goal": 0,
+                "importance": 0,
+                "total": 0
+              },
+              "scheduled_block_ids": [
+                "activity:farmers"
+              ],
+              "constraints": [
+                "duration=30m",
+                "energy=1",
+                "goal_weight=0"
+              ]
+            },
+            {
+              "activity_id": "workout",
+              "code": "scheduled",
+              "summary": "Placed in the highest-scoring available minute interval.",
+              "score": {
+                "deadline": 0,
+                "dependency": 0,
+                "travel": 0,
+                "energy": 0,
+                "goal": 0,
+                "importance": 0,
+                "total": 0
+              },
+              "scheduled_block_ids": [
+                "activity:workout"
+              ],
+              "constraints": [
+                "duration=60m",
+                "energy=1",
+                "goal_weight=0"
+              ]
+            },
+            {
+              "activity_id": "dinner",
+              "code": "scheduled",
+              "summary": "Placed in the highest-scoring available minute interval.",
+              "score": {
+                "deadline": 0,
+                "dependency": 0,
+                "travel": 0,
+                "energy": 0,
+                "goal": 0,
+                "importance": 0,
+                "total": 0
+              },
+              "scheduled_block_ids": [
+                "activity:dinner"
+              ],
+              "constraints": [
+                "duration=90m",
+                "energy=1",
+                "goal_weight=0"
+              ]
+            }
+          ],
+          "unscheduled": [],
+          "diff": {
+            "added": [],
+            "removed": [],
+            "moved": [
+              {
+                "block_id": "activity:work",
+                "activity_id": "work",
+                "title": "Work",
+                "previous_starts_at": "2026-09-07T09:00:00-04:00",
+                "previous_ends_at": "2026-09-07T17:00:00-04:00",
+                "proposed_starts_at": "2026-09-07T08:00:00-04:00",
+                "proposed_ends_at": "2026-09-07T16:00:00-04:00"
+              },
+              {
+                "block_id": "activity:workout",
+                "activity_id": "workout",
+                "title": "Gym workout",
+                "previous_starts_at": "2026-09-07T07:30:00-04:00",
+                "previous_ends_at": "2026-09-07T08:30:00-04:00",
+                "proposed_starts_at": "2026-09-07T16:00:00-04:00",
+                "proposed_ends_at": "2026-09-07T17:00:00-04:00"
+              }
+            ]
+          }
+        },
+        "calendar": {
+          "calendar_summary": "LifeOS Proposed",
+          "operations": [
+            {
+              "operation": "update",
+              "event_id": "lifeosvlhf47i6evn9daa9pbnqfiojhuqjgoo4qb52s21g00j6dlbcebk0",
+              "before_summary": "Dinner with Sam",
+              "after_summary": "Dinner with Sam"
+            },
+            {
+              "operation": "update",
+              "event_id": "lifeosbm6q9rjg7a1b122l7vhmb3rvcki6r5jagjsfhrp91km2uh6uc080",
+              "before_summary": "Work",
+              "after_summary": "Work"
+            },
+            {
+              "operation": "update",
+              "event_id": "lifeoskid7kv6kh3alb31h915ps0vf1lk6icl369vc50ae3a49l0unrmlg",
+              "before_summary": "Gym workout",
+              "after_summary": "Gym workout"
+            },
+            {
+              "operation": "update",
+              "event_id": "lifeosi3qmnr06ru84vv0u6n46ihaalm9hqdv8gtotat8lpjemf0npaov0",
+              "before_summary": "Farmers market",
+              "after_summary": "Farmers market"
+            }
+          ]
+        }
+      },
+      "preserved_protected_activity_ids": [
+        "farmers"
+      ]
+    },
+    "cleanup": {
+      "authorization": {
+        "proposal_id": "00000000-0000-0000-0000-000000000901",
+        "action_class": "calendar.apply",
+        "payload": "[{\"ends_at\":\"2026-09-07T07:30:00-04:00\",\"event_key\":\"calendar-dinner-dinner\",\"starts_at\":\"2026-09-07T06:00:00-04:00\",\"summary\":\"Dinner with Sam\"},{\"ends_at\":\"2026-09-07T08:30:00-04:00\",\"event_key\":\"calendar-workout-workout\",\"starts_at\":\"2026-09-07T07:30:00-04:00\",\"summary\":\"Gym workout\"},{\"ends_at\":\"2026-09-07T17:00:00-04:00\",\"event_key\":\"calendar-work-work\",\"starts_at\":\"2026-09-07T09:00:00-04:00\",\"summary\":\"Work\"},{\"ends_at\":\"2026-09-07T17:45:00-04:00\",\"event_key\":\"calendar-farmers-farmers\",\"starts_at\":\"2026-09-07T17:15:00-04:00\",\"summary\":\"Farmers market\"}]",
+        "state": "reverted",
+        "created_at": "2026-09-06T20:00:00Z"
+      },
+      "calendar": {
+        "operations": [
+          {
+            "operation": "delete",
+            "event_id": "lifeosbm6q9rjg7a1b122l7vhmb3rvcki6r5jagjsfhrp91km2uh6uc080",
+            "before_summary": "Work",
+            "after_summary": null
+          },
+          {
+            "operation": "delete",
+            "event_id": "lifeosi3qmnr06ru84vv0u6n46ihaalm9hqdv8gtotat8lpjemf0npaov0",
+            "before_summary": "Farmers market",
+            "after_summary": null
+          },
+          {
+            "operation": "delete",
+            "event_id": "lifeoskid7kv6kh3alb31h915ps0vf1lk6icl369vc50ae3a49l0unrmlg",
+            "before_summary": "Gym workout",
+            "after_summary": null
+          },
+          {
+            "operation": "delete",
+            "event_id": "lifeosvlhf47i6evn9daa9pbnqfiojhuqjgoo4qb52s21g00j6dlbcebk0",
+            "before_summary": "Dinner with Sam",
+            "after_summary": null
+          }
+        ],
+        "sync_state": {
+          "calendar_id": "lifeos-proposed-sandbox",
+          "next_sync_token": "8",
+          "events": []
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "conversation_id": "20000000-0000-0000-0000-0000000000aa",
+  "display_name": "Jared",
+  "external_id": "fixture-message-42",
+  "goal_id": "10000000-0000-0000-0000-000000000002",
+  "goal_title": "Ship LifeOS",
+  "identity_id": "10000000-0000-0000-0000-000000000001",
+  "schema_version": 1,
+  "source_item_id": "10000000-0000-0000-0000-000000000005"
+}

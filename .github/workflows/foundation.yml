@@ -1,0 +1,33 @@
+name: Foundation
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.13"
+      - run: uv sync --locked --dev
+      - name: Verify Python, Swift, contracts, and live dry run
+        run: scripts/verify-foundation.sh "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+      - name: Verify local LifeOS workflows and record release gaps
+        run: uv run scripts/verify_lifeos.py --local-only --run-id "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-lifeos"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: foundation-verification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/verification/${{ github.run_id }}-${{ github.run_attempt }}/
+            artifacts/verification/${{ github.run_id }}-${{ github.run_attempt }}-lifeos/
+          if-no-files-found: error
+          retention-days: 14

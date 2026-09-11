@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://secretary.invalid/contracts/v1/conversation-api.schema.json",
+  "title": "LifeOS Portable Conversation API Contract",
+  "type": "object",
+  "required": ["contract_version"],
+  "properties": {
+    "contract_version": {
+      "const": "1.0.0",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    }
+  },
+  "$defs": {
+    "participant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["participant_id", "kind", "display_name", "created_at"],
+      "properties": {
+        "participant_id": { "type": "string", "format": "uuid" },
+        "kind": { "enum": ["user", "agent"] },
+        "display_name": { "type": "string", "minLength": 1 },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device_id", "participant_id", "kind", "name", "created_at"],
+      "properties": {
+        "device_id": { "type": "string", "format": "uuid" },
+        "participant_id": { "type": "string", "format": "uuid" },
+        "kind": { "enum": ["ios", "mac", "web", "channel"] },
+        "name": { "type": "string", "minLength": 1 },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "channel_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["binding_id", "conversation_id", "channel_kind", "external_channel_id", "external_user_id", "bound_at", "state"],
+      "properties": {
+        "binding_id": { "type": "string", "format": "uuid" },
+        "conversation_id": { "type": "string", "format": "uuid" },
+        "channel_kind": { "enum": ["openclaw_webchat", "telegram", "imessage", "email"] },
+        "external_channel_id": { "type": "string", "minLength": 1 },
+        "external_user_id": { "type": "string", "minLength": 1 },
+        "bound_at": { "type": "string", "format": "date-time" },
+        "state": { "enum": ["active", "revoked"] }
+      }
+    },
+    "conversation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conversation_id", "title", "participant_ids", "device_ids", "created_at", "state"],
+      "properties": {
+        "conversation_id": { "type": "string", "format": "uuid" },
+        "title": { "type": "string", "minLength": 1 },
+        "participant_ids": {
+          "type": "array",
+          "items": { "type": "string", "format": "uuid" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "device_ids": {
+          "type": "array",
+          "items": { "type": "string", "format": "uuid" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "created_at": { "type": "string", "format": "date-time" },
+        "state": { "enum": ["active", "cancelled", "completed"] }
+      }
+    },
+    "conversation_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "conversation_id", "participant_id", "device_id", "sequence", "occurred_at", "kind", "payload"],
+      "properties": {
+        "event_id": { "type": "string", "format": "uuid" },
+        "conversation_id": { "type": "string", "format": "uuid" },
+        "participant_id": { "type": "string", "format": "uuid" },
+        "device_id": { "type": "string", "format": "uuid" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "occurred_at": { "type": "string", "format": "date-time" },
+        "kind": { "enum": ["transcript_partial", "transcript_final", "attachment", "tool_result", "cancellation", "resume", "error"] },
+        "payload": {
+          "oneOf": [
+            { "$ref": "#/$defs/transcript_partial" },
+            { "$ref": "#/$defs/transcript_final" },
+            { "$ref": "#/$defs/attachment" },
+            { "$ref": "#/$defs/tool_result" },
+            { "$ref": "#/$defs/cancellation" },
+            { "$ref": "#/$defs/resume" },
+            { "$ref": "#/$defs/error" }
+          ]
+        }
+      }
+    },
+    "transcript_partial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "turn_id", "text", "is_final"],
+      "properties": {
+        "kind": { "const": "transcript_partial" },
+        "turn_id": { "type": "string", "format": "uuid" },
+        "text": { "type": "string", "minLength": 1 },
+        "is_final": { "const": false }
+      }
+    },
+    "transcript_final": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "turn_id", "text", "is_final"],
+      "properties": {
+        "kind": { "const": "transcript_final" },
+        "turn_id": { "type": "string", "format": "uuid" },
+        "text": { "type": "string", "minLength": 1 },
+        "is_final": { "const": true }
+      }
+    },
+    "attachment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "attachment_id", "mime_type", "size_bytes", "reference"],
+      "properties": {
+        "kind": { "const": "attachment" },
+        "attachment_id": { "type": "string", "format": "uuid" },
+        "mime_type": { "type": "string", "minLength": 1 },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "reference": { "type": "string", "minLength": 1 }
+      }
+    },
+    "tool_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "tool_call_id", "tool_name", "status", "result_reference"],
+      "properties": {
+        "kind": { "const": "tool_result" },
+        "tool_call_id": { "type": "string", "minLength": 1 },
+        "tool_name": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["ok", "error"] },
+        "result_reference": { "type": "string", "minLength": 1 }
+      }
+    },
+    "cancellation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "turn_id", "reason"],
+      "properties": {
+        "kind": { "const": "cancellation" },
+        "turn_id": { "type": "string", "format": "uuid" },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "resume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "turn_id", "resume_from_turn_id"],
+      "properties": {
+        "kind": { "const": "resume" },
+        "turn_id": { "type": "string", "format": "uuid" },
+        "resume_from_turn_id": { "type": "string", "format": "uuid" }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "code", "message", "retryable"],
+      "properties": {
+        "kind": { "const": "error" },
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 },
+        "retryable": { "type": "boolean" }
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "fixture_version": 1,
+  "upstream": "OpenClaw",
+  "pinned_revision": "befc0c24",
+  "candidate_revision": "00000000",
+  "candidate_expected_compatible": false,
+  "conversation_contract_version": "1.0.0",
+  "plugin_contract": {
+    "transport": "out_of_process_mtls",
+    "core_patched": false,
+    "endpoints": [
+      "conversation.get",
+      "conversation.events.list",
+      "conversation.events.append"
+    ],
+    "capabilities": [
+      "conversation.read",
+      "conversation.write"
+    ],
+    "initial_text_channels": [
+      "openclaw_webchat",
+      "telegram"
+    ],
+    "later_constrained_channels": [
+      "imessage",
+      "email"
+    ]
+  }
+}

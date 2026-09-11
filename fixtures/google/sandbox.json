@@ -1,0 +1,6 @@
+{
+  "owner_id": "lifeos-user",
+  "secret_reference": "keychain://google-calendar/sandbox",
+  "access_token": "sandbox-access-token",
+  "primary_event_id": "primary-protected"
+}

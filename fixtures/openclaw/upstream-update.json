@@ -1,0 +1,19 @@
+{
+  "candidate_revision": "befc0c24",
+  "expected_capabilities": [
+    "conversation.read",
+    "conversation.write"
+  ],
+  "expected_endpoints": [
+    "conversation.events.append",
+    "conversation.events.list",
+    "conversation.get"
+  ],
+  "fabric_enabled": false,
+  "pinned_revision": "befc0c24",
+  "production_capabilities_enabled": false,
+  "reversible": true,
+  "rollout_id": "18000000-0000-0000-0000-000000000001",
+  "target": "sandbox",
+  "workers_enabled": false
+}

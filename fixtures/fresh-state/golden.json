@@ -1,0 +1,20 @@
+{
+  "conversation": {
+    "event_external_id": "fixture-message-42",
+    "event_id": "10000000-0000-0000-0000-000000000005",
+    "event_sequence": 1,
+    "record_id": "20000000-0000-0000-0000-0000000000aa"
+  },
+  "identity": {
+    "display_name": "Jared",
+    "record_id": "10000000-0000-0000-0000-000000000001",
+    "state": "active"
+  },
+  "life": {
+    "kind": "goal",
+    "record_id": "10000000-0000-0000-0000-000000000002",
+    "state": "active",
+    "title": "Ship LifeOS"
+  },
+  "production_capabilities_enabled": false
+}

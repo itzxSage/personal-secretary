@@ -1,0 +1,6 @@
+{
+  "audit_chain_valid": true,
+  "database_key_rotated": true,
+  "invalid_key_rejected": true,
+  "production_capabilities_enabled": false
+}

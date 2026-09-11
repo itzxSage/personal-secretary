@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "clinical_inference_allowed": false,
+  "required_tests": ["tests/test_energy.py", "tests/test_learning.py"]
+}

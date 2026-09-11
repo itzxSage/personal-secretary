@@ -1,0 +1,10 @@
+{
+  "revision": "befc0c24",
+  "endpoints": [
+    "conversation.get",
+    "conversation.events.list",
+    "conversation.events.append"
+  ],
+  "capabilities": ["conversation.read", "conversation.write"],
+  "denied_realtime_endpoint": "openclaw.worker.execute"
+}

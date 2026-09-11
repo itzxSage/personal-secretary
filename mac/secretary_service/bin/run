@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+if [ "${SECRETARY_DRY_RUN:-1}" != "1" ]; then
+    printf '%s\n' "Todo 1 service may run only with SECRETARY_DRY_RUN=1" >&2
+    exit 64
+fi
+
+export SECRETARY_CONNECTORS="disabled"
+exec uv run uvicorn secretary_service.app:app \
+    --host "${SECRETARY_HOST:-127.0.0.1}" \
+    --port "${SECRETARY_PORT:-8765}"

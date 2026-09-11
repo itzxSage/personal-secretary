@@ -1,0 +1,93 @@
+name: SecretaryApp
+options:
+  minimumXcodeGenVersion: 2.46.0
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+targets:
+  SecretaryContract:
+    type: framework
+    platform: iOS
+    sources:
+      - path: SecretaryApp/Contract
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lifeos.SecretaryContract
+        GENERATE_INFOPLIST_FILE: YES
+  SecretaryClient:
+    type: framework
+    platform: iOS
+    sources:
+      - path: SecretaryApp/Client
+    dependencies:
+      - target: SecretaryContract
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lifeos.SecretaryClient
+        GENERATE_INFOPLIST_FILE: YES
+  SecretaryApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: SecretaryApp/App
+    dependencies:
+      - target: SecretaryClient
+      - target: SecretaryContract
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lifeos.SecretaryApp
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 946R3QHA5P
+    info:
+      path: Generated/SecretaryApp-Info.plist
+      properties:
+        CFBundleDisplayName: Secretary
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Editor
+            CFBundleURLName: com.lifeos.SecretaryApp
+            CFBundleURLSchemes:
+              - lifeos
+        NSMicrophoneUsageDescription: Secretary uses the microphone only when you explicitly start a voice session.
+        NSLocalNetworkUsageDescription: Secretary connects to your paired Mac on your private network.
+        UIApplicationSupportsIndirectInputEvents: true
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+  SecretaryContractTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/SecretaryContractTests
+    dependencies:
+      - target: SecretaryContract
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+  SecretaryClientTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/SecretaryClientTests
+    dependencies:
+      - target: SecretaryClient
+      - target: SecretaryContract
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  SecretaryApp:
+    build:
+      targets:
+        SecretaryApp: all
+        SecretaryContractTests: [test]
+        SecretaryClientTests: [test]
+    test:
+      targets:
+        - SecretaryContractTests
+        - SecretaryClientTests

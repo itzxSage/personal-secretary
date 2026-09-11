@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "production_capabilities_enabled": false,
+  "required_tests": [
+    "tests/security",
+    "tests/test_authority.py",
+    "tests/test_device_enrollment.py",
+    "tests/test_autopilot_policy.py",
+    "tests/test_worker_sandbox.py",
+    "tests/test_openclaw_adversary.py",
+    "tests/test_rollout_recovery.py"
+  ]
+}

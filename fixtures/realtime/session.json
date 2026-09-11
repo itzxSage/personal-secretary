@@ -1,0 +1,61 @@
+{
+  "now": "2026-09-06T20:00:00Z",
+  "conversation": {
+    "conversation_id": "55555555-5555-4555-8555-555555555555",
+    "title": "Continuous voice conversation",
+    "participant_ids": ["11111111-1111-4111-8111-111111111111"],
+    "device_ids": ["33333333-3333-4333-8333-333333333333"],
+    "created_at": "2026-09-06T20:00:00Z",
+    "state": "active"
+  },
+  "devices": [{
+    "device_id": "33333333-3333-4333-8333-333333333333",
+    "participant_id": "11111111-1111-4111-8111-111111111111",
+    "kind": "ios",
+    "name": "Owned iPhone",
+    "created_at": "2026-09-06T20:00:00Z"
+  }],
+  "fingerprint": "sha256:task-13-owned-iphone",
+  "endpoint": {"url": "wss://life-engine.test/voice"},
+  "project_id": "life-engine-task-13",
+  "first_turn_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "second_turn_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  "resume_device_id": "77777777-7777-4777-8777-777777777777",
+  "proposal": {
+    "proposal_id": "88888888-8888-4888-8888-888888888888",
+    "action_class": "calendar.apply",
+    "payload": "{\"activity\":\"workout\",\"start\":\"18:00\"}",
+    "state": "proposed",
+    "created_at": "2026-09-06T20:00:00Z"
+  },
+  "approval": {
+    "fact_id": "bbbbbbbb-1111-4111-8111-bbbbbbbbbbbb",
+    "proposal_id": "88888888-8888-4888-8888-888888888888",
+    "payload_hash": "ab420946bffdb1a81e60644fa876118f5ce5b77e269cb92f50a65da8b67e7098",
+    "issued_at": "2026-09-06T20:00:00Z",
+    "expires_at": "2026-09-06T20:05:00Z",
+    "idempotency_key": "task-13-device-approval",
+    "actor": "user",
+    "correlation_id": "task-13",
+    "signature": "777144c40d208db681046d08bd696e5d4b8119a9c837e44188f90b72a3407fe49a99c8335c788348d1c2e3eba9ae2eb6f0d8a71d37e3644ce97a6ccc49188f0b",
+    "proof": "device_signed",
+    "device_id": "33333333-3333-4333-8333-333333333333"
+  },
+  "rest_of_day_reply": "Workout is the only flexible item left today.",
+  "approved_reply": "Workout moved to 6 PM.",
+  "golden": {
+    "event_ids": [1, 2, 3, 4, 5, 6, 7],
+    "tts": [
+      "Checking your Life Plan.",
+      "Workout is the only flexible item left today.",
+      "Checking the workout constraints.",
+      "I have a replan ready. Confirm on your iPhone.",
+      "Workout moved to 6 PM."
+    ],
+    "transcripts": ["what's left", "move workout"],
+    "approved_replans": 1,
+    "execution_leases": 1,
+    "cancelled_approval_execution_leases": 0,
+    "resume_event_ids": [5, 6, 7]
+  }
+}
