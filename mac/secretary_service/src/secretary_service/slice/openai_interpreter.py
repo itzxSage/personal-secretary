@@ -12,18 +12,20 @@ from pydantic import BaseModel, JsonValue, SecretStr, TypeAdapter, ValidationErr
 
 from secretary_service.keys import KeyProvider
 from secretary_service.models import RecordId
-from secretary_service.planner_models import ActivityFlexibility, DayPlanRequest
+from secretary_service.planner_models import DayPlanRequest
 from secretary_service.slice.models import InterpretationProposal
+from secretary_service.slice.validation import (
+    InterpretationProviderError as InterpretationProviderError,  # noqa: PLC0414 -- public re-export
+)
+from secretary_service.slice.validation import (
+    preserve_plan_constraints,
+)
 from secretary_service.storage import Clock
 from secretary_service.voice.privacy import RetentionVerification
 
 MAX_RESPONSE_BYTES = 2_000_000
 MAX_INPUT_CHARACTERS = 16_000
 MAX_REQUEST_BYTES = 256_000
-
-
-class InterpretationProviderError(Exception):
-    """Content-free failure; provider bodies and credentials are not diagnostic output."""
 
 
 class ResponsesTransport(Protocol):
@@ -187,33 +189,10 @@ class OpenAIInterpretationAdapter:
         except ValidationError:
             message = "interpretation response failed planner validation"
             raise InterpretationProviderError(message) from None
-        self._preserve_canonical_constraints(plan)
+        preserve_plan_constraints(self.base_plan, plan)
         return InterpretationProposal(
             proposal_id=RecordId(uuid4()),
             source_event_id=source_event_id,
             provider_version=f"openai-responses:{settings.model}",
             plan_request=plan,
         )
-
-    def _preserve_canonical_constraints(self, plan: DayPlanRequest) -> None:
-        base = self.base_plan
-        metadata = (
-            "plan_date",
-            "timezone",
-            "window_start",
-            "window_end",
-            "state_revision",
-            "expected_state_revision",
-            "baseline_blocks",
-            "schedule_resolution",
-            "energy_windows",
-        )
-        proposed = {activity.activity_id: activity for activity in plan.activities}
-        protected = [
-            item for item in base.activities if item.flexibility is ActivityFlexibility.PROTECTED
-        ]
-        if any(getattr(plan, field) != getattr(base, field) for field in metadata) or any(
-            proposed.get(item.activity_id) != item for item in protected
-        ):
-            message = "interpretation changed protected or canonical planning constraints"
-            raise InterpretationProviderError(message)

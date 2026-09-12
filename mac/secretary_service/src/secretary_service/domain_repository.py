@@ -19,6 +19,7 @@ from secretary_service.models import (
     TransitionContext,
     record_kind,
 )
+from secretary_service.transactions import domain_transaction
 
 TABLES: Final[Mapping[RecordKind, str]] = {
     RecordKind.IDENTITY: "identities",
@@ -78,7 +79,14 @@ class DomainRepository:
     def create(self, record: DomainRecord, context: TransitionContext) -> None:
         """Create version one and its chained audit entry atomically."""
         kind = record_kind(record)
-        try:
+        with domain_transaction(self._connection):
+            _ = self._ledger.verify()
+            deleted = self._connection.execute(
+                "SELECT record_id FROM tombstones WHERE record_id=?", (str(record.record_id),)
+            ).fetchone()
+            if deleted is not None:
+                message = "deleted record identity cannot be reused"
+                raise ValueError(message)
             _ = self._connection.execute(
                 f"INSERT INTO {TABLES[kind]} VALUES(?, 1, ?, ?, ?)",
                 (
@@ -98,10 +106,6 @@ class DomainRepository:
                     context=context,
                 )
             )
-            self._connection.commit()
-        except sqlcipher.DatabaseError:
-            self._connection.rollback()
-            raise
 
     def transition(
         self,
@@ -111,11 +115,24 @@ class DomainRepository:
         context: TransitionContext,
     ) -> None:
         """Append a new immutable state version and audit entry."""
+        with domain_transaction(self._connection):
+            _ = self._ledger.verify()
+            self._transition(kind, record_id, new_state, context)
+
+    def _transition(
+        self,
+        kind: RecordKind,
+        record_id: RecordId,
+        new_state: str,
+        context: TransitionContext,
+    ) -> None:
         current = self.read(kind, record_id)
         if current is None:
             raise RecordNotFoundError(record_kind=kind, record_id=record_id)
         version = self.version_count(kind, record_id) + 1
-        changed = current.model_copy(update={"state": new_state})
+        changed = DOMAIN_RECORD_ADAPTER.validate_json(
+            current.model_copy(update={"state": new_state}).model_dump_json()
+        )
         _ = self._connection.execute(
             f"INSERT INTO {TABLES[kind]} VALUES(?, ?, ?, ?, ?)",
             (
@@ -136,7 +153,6 @@ class DomainRepository:
                 context=context,
             )
         )
-        self._connection.commit()
 
     def read(self, kind: RecordKind, record_id: RecordId) -> DomainRecord | None:
         """Return the latest live version of one record."""
@@ -166,6 +182,11 @@ class DomainRepository:
 
     def delete(self, kind: RecordKind, record_id: RecordId, context: TransitionContext) -> None:
         """Purge all content versions and retain a keyed tombstone."""
+        with domain_transaction(self._connection):
+            _ = self._ledger.verify()
+            self._delete(kind, record_id, context)
+
+    def _delete(self, kind: RecordKind, record_id: RecordId, context: TransitionContext) -> None:
         current = self.read(kind, record_id)
         if current is None:
             raise RecordNotFoundError(record_kind=kind, record_id=record_id)
@@ -192,7 +213,6 @@ class DomainRepository:
                 context=context,
             )
         )
-        self._connection.commit()
 
     def tombstone(self, record_id: RecordId) -> Tombstone:
         """Return pseudonymous deletion evidence."""

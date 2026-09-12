@@ -10,6 +10,7 @@ license obligations.
 | Capability | Donor | Donor SHA | License | Decision | What we take | Owner | Update rule | Security decision |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Agent gateway | OpenClaw | befc0c24 | MIT | keep | Long-running Gateway, WS control plane | Jared Gagne | pin updates | adapter-only |
+| Optional planning agent | Hermes Agent | 2237be355906fbe6065ce1815711eee52b2d646e | MIT | integrate | HTTP planning proposals through the existing interpretation interface | Jared Gagne | pinned candidate; compatibility and isolation review before upgrades | isolated advisory-only; no canonical state or external actions |
 | Messaging | OpenClaw | befc0c24 | MIT | keep | WhatsApp, Telegram, Slack, Discord, Signal, iMessage/WebChat | Jared Gagne | pin updates | adapter-only |
 | Mobile/device nodes | OpenClaw | befc0c24 | MIT | keep | iOS/Android/macOS/headless node model | Jared Gagne | pin updates | adapter-only |
 | Model/runtime abstraction | OpenClaw | befc0c24 | MIT | keep | Provider/model/runtime separation | Jared Gagne | pin updates | adapter-only |

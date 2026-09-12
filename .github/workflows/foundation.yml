@@ -20,10 +20,14 @@ jobs:
           enable-cache: true
           python-version: "3.13"
       - run: uv sync --locked --dev
+      - name: Install local PostgreSQL test binaries
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: brew install postgresql@17
       - name: Verify Python, Swift, contracts, and live dry run
         run: scripts/verify-foundation.sh "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
       - name: Verify local LifeOS workflows and record release gaps
-        run: uv run scripts/verify_lifeos.py --local-only --run-id "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-lifeos"
+        run: uv run scripts/verify_lifeos.py --local-only --with-postgres --run-id "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-lifeos"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:

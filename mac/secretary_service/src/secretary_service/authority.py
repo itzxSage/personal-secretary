@@ -293,10 +293,29 @@ class ProposalLifecycle:
         matrix: ApprovalMatrix,
     ) -> ProposalState:
         """Approve a proposed action only with an accepted, unexpired proof."""
-        now = self._clock.now()
         if proposal.state != ProposalState.PROPOSED:
             message = f"cannot approve proposal in state {proposal.state.value}"
             raise PolicyViolationError(message)
+        self.validate_approval(proposal, approval, matrix)
+        replay_keys = (
+            ("approve", str(approval.fact_id)),
+            ("approve-proposal", str(proposal.proposal_id)),
+            ("approve-idempotency", f"{approval.device_id}:{approval.idempotency_key}"),
+        )
+        if not self._consumption.consume(replay_keys):
+            message = "approval replay"
+            raise PolicyViolationError(message)
+        return ProposalState.APPROVED
+
+    def validate_approval(
+        self, proposal: ProposalRecord, approval: Approval, matrix: ApprovalMatrix
+    ) -> None:
+        """Recheck proof, payload, expiry and current device state without consuming it.
+
+        This check alone does not authorize execution: callers also enforce the
+        stored proposal state, durable consumption, and the execution lease.
+        """
+        now = self._clock.now()
         decision = matrix.can_approve(proposal.action_class, approval.proof)
         if not decision.allowed:
             raise PolicyViolationError(decision.reason)
@@ -314,15 +333,6 @@ class ProposalLifecycle:
             raise PolicyViolationError(message)
         if approval.proof == ApprovalProof.DEVICE_SIGNED:
             self._verify_device_signature(proposal, approval)
-        replay_keys = (
-            ("approve", str(approval.fact_id)),
-            ("approve-proposal", str(proposal.proposal_id)),
-            ("approve-idempotency", f"{approval.device_id}:{approval.idempotency_key}"),
-        )
-        if not self._consumption.consume(replay_keys):
-            message = "approval replay"
-            raise PolicyViolationError(message)
-        return ProposalState.APPROVED
 
     def _verify_device_signature(self, proposal: ProposalRecord, approval: Approval) -> None:
         """Verify current enrollment and exact signed approval fields."""

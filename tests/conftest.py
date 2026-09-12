@@ -8,6 +8,8 @@ from secretary_service.keys import DeterministicTestKeyProvider
 from secretary_service.storage import EncryptedStateStore
 from tests.helpers import FakeClock
 
+pytest_plugins = ["tests.postgres_support", "tests.hermes_support"]
+
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(

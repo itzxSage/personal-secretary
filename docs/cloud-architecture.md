@@ -114,6 +114,12 @@ restore with deletions; worker isolation; and source-bound deployed artifact ide
 
 ## Implementation sequence and unresolved deployment inputs
 
+The owner's accelerated delivery target and cost preference are tracked in
+[one-week delivery](one-week-delivery.md). Google Cloud is the initial proposal
+for a managed deployment; account, region, billing ceiling, and provisioning are
+still unresolved. The first domain unit-of-work seam now exists locally; this does
+not complete the PostgreSQL, authority/outbox, or conversation migration.
+
 1. Preserve the Git baseline, correct planner semantics and track capability maturity.
 2. Extract transactional repositories and run the same invariant suite against
    SQLCipher and PostgreSQL. Design the cloud secret provider and enrollment flow.

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/NousResearch/hermes-agent",
+  "release": "v2026.9.7",
+  "revision": "2237be355906fbe6065ce1815711eee52b2d646e",
+  "automatic_updates": false,
+  "role": "planning-proposals-only",
+  "allowed_endpoints": ["/v1/capabilities", "/v1/toolsets", "/v1/chat/completions"],
+  "canonical_state_access": false,
+  "external_actions": false,
+  "tool_execution": false,
+  "live_deployment_verified": false
+}

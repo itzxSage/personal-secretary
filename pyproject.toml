@@ -15,8 +15,12 @@ dependencies = [
     "uvicorn>=0.35,<1",
 ]
 
+[project.optional-dependencies]
+cloud = ["psycopg[binary]>=3.2,<4"]
+
 [dependency-groups]
 dev = [
+    "psycopg[binary]>=3.2,<4",
     "basedpyright>=1.31,<2",
     "httpx2>=2.12,<3",
     "pytest>=8.4,<9",

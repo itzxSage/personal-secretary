@@ -18,6 +18,16 @@ See [planner semantics](planner-semantics.md) and [source management](source-man
 
 ## Codex continuation
 
+- Cloud persistence now has an implemented PostgreSQL domain/device/outbox slice,
+  with real local concurrency and abrupt-process-exit tests. Approval consumption,
+  proposal state, audit and job creation commit together. See
+  [PostgreSQL migration](postgres-migration.md) for the unmigrated repositories and
+  deployment gaps. This is not a cloud deployment or live provider execution.
+- Hermes is now an optional planning interpreter behind the existing proposal
+  interface, pinned to an explicit source commit and tested with a local HTTP
+  fixture. Neither its live runtime nor isolation is claimed complete. See
+  [agent boundaries](agent-runtimes.md).
+
 - Signed approvals now bind the exact action, payload, device, actor, timestamps
   and idempotency identity. Claiming a known device ID without its private key fails.
 - Encrypted enrollment retains keys/revocations across restarts. Calendar and

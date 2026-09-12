@@ -24,6 +24,11 @@ def main() -> int:
     _ = parser.add_argument("--run-id", default="lifeos-local")
     _ = parser.add_argument("--plan", type=Path, default=ROOT / "docs/lifeos-plan.md")
     _ = parser.add_argument(
+        "--with-postgres",
+        action="store_true",
+        help="require real PostgreSQL contract and crash tests in a temporary local cluster",
+    )
+    _ = parser.add_argument(
         "--local-only",
         action="store_true",
         help="return success for passing local checks; still report unmet release requirements",
@@ -48,8 +53,16 @@ def main() -> int:
         ("licenses", ["uv", "run", "scripts/check_licenses.py"]),
         ("secrets", ["uv", "run", "python", "-m", "scripts.scan_secrets"]),
         ("openclaw-pin", ["uv", "run", "scripts/verify_openclaw_pin.py"]),
+        ("hermes-pin", ["uv", "run", "scripts/verify_hermes_pin.py"]),
     ]
     checks = []
+    if args.with_postgres:
+        commands.append(
+            (
+                "postgres",
+                ["uv", "run", "scripts/verify_postgres.py", "--junitxml", str(f2 / "postgres.xml")],
+            )
+        )
     for name, command in commands:
         print(f"Checking {name}...", flush=True)
         checks.append(run_check(name, command, f2))
@@ -95,6 +108,7 @@ def main() -> int:
             "local_verification": "passed" if local_passed else "failed",
             "release_ready": local_passed and f1.exit_code == 0,
             "production_capabilities_enabled": False,
+            "postgres_tests_requested": bool(args.with_postgres),
             "final_gates": [asdict(check) for check in (f1, f3, f4)],
             "F2_report": str(f2 / "report.json"),
         },

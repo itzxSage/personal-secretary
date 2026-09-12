@@ -1,6 +1,8 @@
 """Key-first SQLCipher repository with append-only domain versions."""
 
 import hmac
+from collections.abc import Generator
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from types import TracebackType
@@ -40,7 +42,9 @@ from secretary_service.models import (
     Tombstone,
     TransitionContext,
 )
+from secretary_service.persistence import DomainRecords
 from secretary_service.relay_store import CONVERSATION_RETENTION, ConversationRelayStore
+from secretary_service.transactions import domain_transaction
 
 MIGRATION: Final = Path(__file__).parent / "migrations" / "001_encrypted_domain_state.sql"
 GOALS_MEMORY_MIGRATION: Final = Path(__file__).parent / "migrations" / "003_goals_memory.sql"
@@ -213,8 +217,14 @@ class EncryptedStateStore:
 
     def create(self, record: DomainRecord, context: TransitionContext) -> None:
         """Create version one and its chained audit entry atomically."""
-        _ = self.verify_audit_chain()
         self._domain.create(record, context)
+
+    @contextmanager
+    def domain_transaction(self) -> Generator[DomainRecords]:
+        """Commit domain records and their audit together; roll back on failure."""
+        with domain_transaction(self._connection):
+            _ = self.verify_audit_chain()
+            yield self._domain
 
     def transition(
         self,
@@ -224,7 +234,6 @@ class EncryptedStateStore:
         context: TransitionContext,
     ) -> None:
         """Append a new immutable state version and audit entry."""
-        _ = self.verify_audit_chain()
         self._domain.transition(kind, record_id, new_state, context)
 
     def read(self, kind: RecordKind, record_id: RecordId) -> DomainRecord | None:
@@ -275,7 +284,6 @@ class EncryptedStateStore:
         self, kind: RecordKind, record_id: RecordId, context: TransitionContext
     ) -> None:
         """Purge content versions and retain a keyed tombstone."""
-        _ = self.verify_audit_chain()
         self._domain.delete(kind, record_id, context)
 
     def tombstone(self, record_id: RecordId) -> Tombstone:

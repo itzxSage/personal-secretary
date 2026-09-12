@@ -4,6 +4,8 @@ from typing import Protocol, final
 
 from sqlcipher3 import dbapi2 as sqlcipher
 
+from secretary_service.transactions import domain_transaction
+
 type ConsumptionKey = tuple[str, str]
 
 
@@ -42,7 +44,7 @@ class EncryptedConsumptionStore:
     def consume(self, keys: tuple[ConsumptionKey, ...]) -> bool:
         """Commit every marker together; a duplicate rolls the entire claim back."""
         try:
-            with self._connection:
+            with domain_transaction(self._connection):
                 for namespace, identifier in keys:
                     _ = self._connection.execute(
                         "INSERT INTO authority_consumption(namespace, identifier) VALUES (?, ?)",
