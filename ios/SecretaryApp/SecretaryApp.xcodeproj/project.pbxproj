@@ -18,6 +18,7 @@
 		1FFDBF6D5AB8E23067BD6931 /* SecretaryContract.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AA59A162F69237033FCC7FF8 /* SecretaryContract.framework */; };
 		20D375B5808A0A66C44E44AC /* StartVoiceSessionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5AAB90B9A41FFEC35D01376 /* StartVoiceSessionIntent.swift */; };
 		22EEE5583FA8BDE50A70B67F /* InvocationSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C48598E67B495B5C4004607 /* InvocationSource.swift */; };
+		2414967F6A1ACDBA861F24DE /* LifeInterviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 534A4161CC6727ADB6B671ED /* LifeInterviewView.swift */; };
 		2B8CE8C02C2DC6E2D526A1C3 /* ContractCompatibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8871361D6EE967521908588 /* ContractCompatibility.swift */; };
 		35E5129395FA8BF31F02CA7A /* InvocationAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64EFEEF850C6DFC6C5A11F7E /* InvocationAdapter.swift */; };
 		3DB33437FAA04258CDC134BE /* DeveloperRelayPairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9FE50672EAFFC30EBB09B90 /* DeveloperRelayPairing.swift */; };
@@ -36,6 +37,7 @@
 		7411F922407DF3FB70AD5F1D /* ContractVersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 849E4628577035A49B8E60BA /* ContractVersionTests.swift */; };
 		7678FAFCAF02ABDED37CD5A9 /* IOSInvocationMatrix.swift in Sources */ = {isa = PBXBuildFile; fileRef = F839559337C017F3B70AA4B7 /* IOSInvocationMatrix.swift */; };
 		7F458DD5C0DE17DBB28E437D /* MicrophonePermission.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD52989363A8383EB04FD4DA /* MicrophonePermission.swift */; };
+		80824481AD56D6B649B44884 /* AppBrand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 693924B4958C580A37085439 /* AppBrand.swift */; };
 		83B4EDD36C790D711D059C11 /* SecretaryShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B73B51E5E236A67811EDD72 /* SecretaryShortcuts.swift */; };
 		8632F3A378385A7098275300 /* StartVoiceSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAED34DB004F384F96055607 /* StartVoiceSession.swift */; };
 		8735E62C8AACF67A3564CE08 /* ConversationAPI.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6DC5E50EEB846B0EAE392B /* ConversationAPI.generated.swift */; };
@@ -47,11 +49,13 @@
 		92EF8FB2B426D83B233EFD97 /* InvocationMatrixTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B2242215769B5C02D3E1D4 /* InvocationMatrixTests.swift */; };
 		9A785593D509F22B29614338 /* SecretaryClient.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 5691D937A70308733E6F4433 /* SecretaryClient.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		9E8EA5923D3FD6DC4E4D8BC6 /* ConversationAccessibilityID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C6FD7D3F1336FAFCFCCE5B /* ConversationAccessibilityID.swift */; };
+		A2E568A574A18ACB4CD91AB8 /* LifeInterviewContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AA870E60985CD3648B2FC21 /* LifeInterviewContract.swift */; };
 		AA37CAC842678CFFF91F4E13 /* RelayConnectionConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 216CEDE78833715A8907210C /* RelayConnectionConfiguration.swift */; };
 		AA3F80C546484F6D0F8327D4 /* SendTextMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40FF787EE68064FC00A4AB5 /* SendTextMessage.swift */; };
 		AD843CFC81BAFACCCDB23D28 /* EncryptedConversationCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E86573C8FCBB7B69151F220 /* EncryptedConversationCache.swift */; };
 		B06F6198E70EBFD1566A274E /* TextConversationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAC0BF0400B0F264E9078B49 /* TextConversationTests.swift */; };
 		B0C0DCD0DFEAB4C6524E665C /* SecretaryContract.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = AA59A162F69237033FCC7FF8 /* SecretaryContract.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		B75D1D3102B1524FD0C13F30 /* NativeInterviewVoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA45022C8D1F679E2313740B /* NativeInterviewVoice.swift */; };
 		CA470D718A271AAABC97D67A /* SignedConversationRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40A22924F95FCC51CFA773D3 /* SignedConversationRelay.swift */; };
 		CA4ACF5AECBF1796398CA5A8 /* SecretaryContract.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = AA59A162F69237033FCC7FF8 /* SecretaryContract.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		CD84475B5409454BDC753EE5 /* ConversationEventSink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A22988F90C52DCEA46AA1F /* ConversationEventSink.swift */; };
@@ -158,6 +162,7 @@
 		07AF066F0E2D70FD350C404A /* VoiceConversationClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceConversationClientTests.swift; sourceTree = "<group>"; };
 		14977E748E739A49917D348B /* InvocationOutcome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvocationOutcome.swift; sourceTree = "<group>"; };
 		17C6FD7D3F1336FAFCFCCE5B /* ConversationAccessibilityID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAccessibilityID.swift; sourceTree = "<group>"; };
+		1AA870E60985CD3648B2FC21 /* LifeInterviewContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeInterviewContract.swift; sourceTree = "<group>"; };
 		216CEDE78833715A8907210C /* RelayConnectionConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayConnectionConfiguration.swift; sourceTree = "<group>"; };
 		218223E0A366437E26A8E655 /* EndVoiceSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndVoiceSession.swift; sourceTree = "<group>"; };
 		29B03131862D7B8527B4A0F1 /* ConversationControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationControl.swift; sourceTree = "<group>"; };
@@ -170,6 +175,7 @@
 		461CD8BCB08B0299AF1B1DBB /* ConversationSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationSession.swift; sourceTree = "<group>"; };
 		4B73B51E5E236A67811EDD72 /* SecretaryShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretaryShortcuts.swift; sourceTree = "<group>"; };
 		4E86573C8FCBB7B69151F220 /* EncryptedConversationCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedConversationCache.swift; sourceTree = "<group>"; };
+		534A4161CC6727ADB6B671ED /* LifeInterviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeInterviewView.swift; sourceTree = "<group>"; };
 		5691D937A70308733E6F4433 /* SecretaryClient.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = SecretaryClient.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		56C3D91F86D33A258B4F52AE /* SecretaryApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SecretaryApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		579813115A7043EF29E7FBF7 /* VoiceConversationClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceConversationClient.swift; sourceTree = "<group>"; };
@@ -177,6 +183,7 @@
 		61DE22C3E48460FDDAEE8E7C /* ConversationCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationCommand.swift; sourceTree = "<group>"; };
 		61E15E15E38080DB1B673534 /* ConversationContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationContractTests.swift; sourceTree = "<group>"; };
 		64EFEEF850C6DFC6C5A11F7E /* InvocationAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvocationAdapter.swift; sourceTree = "<group>"; };
+		693924B4958C580A37085439 /* AppBrand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBrand.swift; sourceTree = "<group>"; };
 		6A7D7434E0AA10CDF0424FB4 /* InvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvocationTests.swift; sourceTree = "<group>"; };
 		6AAFE592EF575DD3FA9F117C /* ConversationEventFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEventFactory.swift; sourceTree = "<group>"; };
 		754F50614197B8C979024861 /* DeepLinkRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkRouter.swift; sourceTree = "<group>"; };
@@ -204,6 +211,7 @@
 		F42D284574D88426BE64F00F /* OutboxKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutboxKeyStore.swift; sourceTree = "<group>"; };
 		F839559337C017F3B70AA4B7 /* IOSInvocationMatrix.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSInvocationMatrix.swift; sourceTree = "<group>"; };
 		F8CC5B9B8F91F6F2F05111BB /* EnergyNotificationContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyNotificationContract.swift; sourceTree = "<group>"; };
+		FA45022C8D1F679E2313740B /* NativeInterviewVoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeInterviewVoice.swift; sourceTree = "<group>"; };
 		FAED34DB004F384F96055607 /* StartVoiceSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartVoiceSession.swift; sourceTree = "<group>"; };
 		FBBB5DF5B2AF4C1A64743665 /* EncryptedOutboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedOutboxTests.swift; sourceTree = "<group>"; };
 		FD52989363A8383EB04FD4DA /* MicrophonePermission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicrophonePermission.swift; sourceTree = "<group>"; };
@@ -311,6 +319,7 @@
 				9C48598E67B495B5C4004607 /* InvocationSource.swift */,
 				00C83316BBE9B2BA85EAC149 /* InvocationValues.swift */,
 				F839559337C017F3B70AA4B7 /* IOSInvocationMatrix.swift */,
+				1AA870E60985CD3648B2FC21 /* LifeInterviewContract.swift */,
 				FD52989363A8383EB04FD4DA /* MicrophonePermission.swift */,
 				873DA09362774507EBAEAAA6 /* RelayURLSessionTransport.swift */,
 				F40FF787EE68064FC00A4AB5 /* SendTextMessage.swift */,
@@ -324,12 +333,15 @@
 		9804C4B5CCCDC30FF513FDBA /* App */ = {
 			isa = PBXGroup;
 			children = (
+				693924B4958C580A37085439 /* AppBrand.swift */,
 				29B03131862D7B8527B4A0F1 /* ConversationControl.swift */,
 				461CD8BCB08B0299AF1B1DBB /* ConversationSession.swift */,
 				7E3BF2F489124DE61A728E0D /* ConversationShellView.swift */,
 				4270E2D70A0C63CBC1DCEC55 /* ConversationWidget.swift */,
 				B9FE50672EAFFC30EBB09B90 /* DeveloperRelayPairing.swift */,
 				E293E72A45192965AA6A74C5 /* DeviceSurfaceReceiptStore.swift */,
+				534A4161CC6727ADB6B671ED /* LifeInterviewView.swift */,
+				FA45022C8D1F679E2313740B /* NativeInterviewVoice.swift */,
 				95B1A62718FC472317634515 /* NotificationDeepLinkDelegate.swift */,
 				F42D284574D88426BE64F00F /* OutboxKeyStore.swift */,
 				0612A3202D2EE622A06B4093 /* PushToTalkButton.swift */,
@@ -531,6 +543,7 @@
 				73D694777CF6482D1EED8C0C /* InvocationOutcome.swift in Sources */,
 				22EEE5583FA8BDE50A70B67F /* InvocationSource.swift in Sources */,
 				DBC0C868A3A1ECAC682ED50F /* InvocationValues.swift in Sources */,
+				A2E568A574A18ACB4CD91AB8 /* LifeInterviewContract.swift in Sources */,
 				7F458DD5C0DE17DBB28E437D /* MicrophonePermission.swift in Sources */,
 				47AC669C9B18178B39C4B7B6 /* RelayURLSessionTransport.swift in Sources */,
 				AA3F80C546484F6D0F8327D4 /* SendTextMessage.swift in Sources */,
@@ -554,12 +567,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				80824481AD56D6B649B44884 /* AppBrand.swift in Sources */,
 				4FFFC194FFD13692088D7E1A /* ConversationControl.swift in Sources */,
 				CE1DB5E6DE4E70C11AB72CED /* ConversationSession.swift in Sources */,
 				1576AEC8EC0742B97CEB910C /* ConversationShellView.swift in Sources */,
 				711F76ED5ACADE7EBB0118F9 /* ConversationWidget.swift in Sources */,
 				3DB33437FAA04258CDC134BE /* DeveloperRelayPairing.swift in Sources */,
 				716B24ED5EA7F1D6F33DAF61 /* DeviceSurfaceReceiptStore.swift in Sources */,
+				2414967F6A1ACDBA861F24DE /* LifeInterviewView.swift in Sources */,
+				B75D1D3102B1524FD0C13F30 /* NativeInterviewVoice.swift in Sources */,
 				8EC3EC41FDBED21B6480CE8D /* NotificationDeepLinkDelegate.swift in Sources */,
 				E3086E4D1568FEDE08AD1E8F /* OutboxKeyStore.swift in Sources */,
 				46CB9D3BE5123CCF211F7DA7 /* PushToTalkButton.swift in Sources */,

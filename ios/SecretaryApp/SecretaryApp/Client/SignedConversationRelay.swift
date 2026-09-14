@@ -145,6 +145,36 @@ public actor SignedConversationRelay {
         guard result.deleted else { throw ConversationRelayError.invalidResponse }
     }
 
+    public func startInterview() async throws -> LifeInterviewReply {
+        try await request("POST", "/v1/interview")
+    }
+
+    public func interviewTurn(
+        revision: Int, action: LifeInterviewAction, text: String = "", questionKey: String?
+    ) async throws -> LifeInterviewReply {
+        let body = try Self.encoder().encode(LifeInterviewTurn(
+            expected_revision: revision, action: action, text: text, question_key: questionKey
+        ))
+        return try await request("POST", "/v1/interview/turn", body: body)
+    }
+
+    public func previewWeekPlan() async throws -> WeekPlanProposal {
+        try await request("POST", "/v1/week-plan")
+    }
+
+    public func approveWeekPlan(
+        proposalID: UUID, approval: LifeOSApproval
+    ) async throws -> WeekPlanExecutionResult {
+        guard approval.proposalID == proposalID, approval.deviceID == deviceID else {
+            throw ConversationRelayError.invalidBatch
+        }
+        let body = try Self.encoder().encode(WeekPlanApprovalRequest(approval: approval))
+        let target = "/v1/week-plan/\(proposalID.uuidString.lowercased())/approve"
+        let result: WeekPlanExecutionResult = try await request("POST", target, body: body)
+        guard result.proposalID == proposalID else { throw ConversationRelayError.invalidResponse }
+        return result
+    }
+
     /// Snapshot one bounded batch. Failed delivery or a malformed ACK leaves the queue untouched.
     public func flush(_ outbox: EncryptedOutbox) async throws -> RelayEventAcknowledgment? {
         guard !isDelivering else { throw ConversationRelayError.deliveryInProgress }

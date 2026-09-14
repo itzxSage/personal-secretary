@@ -31,6 +31,8 @@ final class ConversationSession {
     private var nextSequence = 1
     private(set) var transcript: [ConversationEvent] = []
     private(set) var statusMessage: String?
+    private(set) var interviewReply: LifeInterviewReply?
+    private(set) var interviewError: String?
     private(set) var isSessionActive = false
     private var activeTurnID: UUID?
 #if DEBUG && os(iOS)
@@ -62,6 +64,38 @@ final class ConversationSession {
         )
         self.adapter = InvocationAdapter(startVoiceSession: command)
         self.router = DeepLinkRouter(adapter: adapter)
+    }
+
+    func loadInterview() async {
+        guard !isBusy else { return }
+        guard let relay else {
+            interviewError = "Connect to your Life Engine to start the interview."
+            return
+        }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            interviewReply = try await relay.startInterview()
+            interviewError = nil
+        } catch { interviewError = "I couldn't reach your Life Engine. Your saved answers are safe." }
+    }
+
+    func advanceInterview(_ action: LifeInterviewAction, text: String = "") async -> Bool {
+        guard !isBusy, let relay, let reply = interviewReply else { return false }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            interviewReply = try await relay.interviewTurn(
+                revision: reply.revision, action: action, text: text, questionKey: reply.question?.key
+            )
+            interviewError = nil
+            return true
+        } catch ConversationRelayError.httpStatus(409) {
+            interviewError = "The interview changed on another device. Resume before sending again."
+        } catch {
+            interviewError = "I couldn't save that answer. Keep it here and try again."
+        }
+        return false
     }
 
     func startVoiceSession(source: InvocationSource) async {

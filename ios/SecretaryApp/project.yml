@@ -44,13 +44,14 @@ targets:
     info:
       path: Generated/SecretaryApp-Info.plist
       properties:
-        CFBundleDisplayName: Secretary
+        CFBundleDisplayName: LifeOS
         CFBundleURLTypes:
           - CFBundleTypeRole: Editor
             CFBundleURLName: com.lifeos.SecretaryApp
             CFBundleURLSchemes:
               - lifeos
         NSMicrophoneUsageDescription: Secretary uses the microphone only when you explicitly start a voice session.
+        NSSpeechRecognitionUsageDescription: LifeOS turns your spoken interview answers into text using on-device speech recognition.
         NSLocalNetworkUsageDescription: Secretary connects to your paired Mac on your private network.
         UIApplicationSupportsIndirectInputEvents: true
         UILaunchScreen: {}

@@ -6,6 +6,7 @@ struct ConversationShellView: View {
     let session: ConversationSession
     @State private var draft = ""
     @State private var showingDelete = false
+    @State private var showingInterview = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,11 +36,14 @@ struct ConversationShellView: View {
             Text("Message content is purged. Only minimized audit proof remains.")
         }
         .accessibilityIdentifier(ConversationAccessibilityID.shell.rawValue)
+#if os(iOS)
+        .sheet(isPresented: $showingInterview) { LifeInterviewView(session: session) }
+#endif
     }
 
     private var header: some View {
         HStack {
-            Text("Secretary")
+            Text(AppBrand.displayName)
                 .font(.headline)
             Spacer()
             if session.isRelayConfigured {
@@ -48,9 +52,9 @@ struct ConversationShellView: View {
                 Button("Delete", role: .destructive) { showingDelete = true }
                     .disabled(session.isBusy)
             }
-            Text("Contract \(SecretaryContractVersion.current.rawValue)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+#if os(iOS)
+            Button("Know Me") { showingInterview = true }
+#endif
         }
         .padding()
         .background(.bar)
@@ -98,7 +102,7 @@ struct ConversationShellView: View {
 
     private var textComposer: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            TextField("Message Secretary", text: $draft, axis: .vertical)
+            TextField("Message \(AppBrand.displayName)", text: $draft, axis: .vertical)
                 .lineLimit(1...4)
                 .textFieldStyle(.roundedBorder)
                 .submitLabel(.send)
