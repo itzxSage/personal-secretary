@@ -28,8 +28,8 @@ from secretary_service.enrollment import DeviceId, DeviceRegistry
 from secretary_service.google_calendar_sandbox import GoogleCalendarSandbox
 from secretary_service.keys import DeterministicTestKeyProvider
 from secretary_service.life_knowledge import RoutineFlexibility
-from secretary_service.models import ActorId, CorrelationId, Proposal, RecordId, RecordKind
 from secretary_service.memory import MemoryRecord
+from secretary_service.models import ActorId, CorrelationId, Proposal, RecordId, RecordKind
 from secretary_service.planner_results import PlanStatus
 from secretary_service.relay_api import (
     MAX_BODY_BYTES,
@@ -42,8 +42,8 @@ from secretary_service.storage import EncryptedStateStore
 from secretary_service.week_planning import (
     WeekPlanApproval,
     WeekPlanExecutionResult,
-    WeekPlanProposal,
     WeekPlanningService,
+    WeekPlanProposal,
 )
 from tests.helpers import FakeClock
 from tests.test_conversation_relay import (
@@ -57,6 +57,7 @@ from tests.test_conversation_relay import (
 )
 from tests.test_google_calendar import make_adapter
 from tests.test_week_planning import routine, seed
+
 
 # FastAPI serializes computed fields (e.g. PlanBlock.duration_minutes) into the
 # wire payload, which the canonical model forbids on input. Clients must tolerate

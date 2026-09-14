@@ -54,11 +54,11 @@ from secretary_service.storage import Clock, EncryptedStateStore
 from secretary_service.week_planning import (
     WeekPlanApproval,
     WeekPlanExecutionResult,
-    WeekPlanProposal,
-    WeekPlanProposalError,
     WeekPlanningPolicyError,
     WeekPlanningProviderError,
     WeekPlanningService,
+    WeekPlanProposal,
+    WeekPlanProposalError,
 )
 
 MAX_BODY_BYTES = 256 * 1024

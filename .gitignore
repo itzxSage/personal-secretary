@@ -23,11 +23,18 @@ artifacts/
 *.zip
 *.p12
 *.pfx
+*.pem
+*.key
+id_rsa*
+*.jks
 *.mobileprovision
 client_secret_*.json
+credentials.json
+token.json
 .omo/
 run-continuation/
 
 # Personal bootstrap sources must stay outside this public repository.
-jared_lifeos_bootstrap_knowledge_v1.yaml
-jared_lifeos_bootstrap_readme_v1.md
+*lifeos_bootstrap*.yaml
+*lifeos_bootstrap*.md
+**/.config/lifeos/

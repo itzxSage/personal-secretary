@@ -6,6 +6,8 @@ Ignored databases, local environment files, build products and reports are outsi
 the source scan. No network requests or file modifications are performed.
 """
 
+from __future__ import annotations
+
 import json
 import re
 import subprocess

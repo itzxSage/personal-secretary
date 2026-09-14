@@ -225,3 +225,98 @@ No private data leaks found in tracked files. Private bootstrap files at
 - Interrupted apply has no recovery path (strongest follow-up candidate)
 - Lease expiry is unreachable in service flow (issued and verified in same call)
 - `{"value": None}` imports content `"None"` — needs a decision (reject or skip)
+
+## Checkpoint 2026-09-14 — Course Correction & Verified State
+
+The seven queued ultrawork feature prompts (interaction architecture, continuous
+voice, Driving Mode, Capability Router, coding-agent observability, proactive
+intelligence, hardening) were delivered **early** and are **NOT evidence of
+completion**. This section records the actual, verified state. Dependency order
+restored: P0 correctness/security/privacy → P1 foundation (bootstrap +
+Understanding + physical week-plan vertical) → P2–P7 later waves → P8 hardening.
+
+### Campaign Classification (actual, not queue-delivery)
+
+| Campaign | Status | Evidence |
+|---|---|---|
+| A. Takeover / recovery | **COMPLETE** | Session continues; worktree preserved; no reset/clean |
+| B. Private bootstrap ingestion | **COMPLETE** | 222 assertions imported (Wave 3.5); sources gitignored outside repo |
+| C. User Understanding reconciliation | **BLOCKED — physical gate** | Requires week-planning interview on physical iPhone |
+| D. Physical iPhone week-plan vertical | **PARTIAL / UNVERIFIED** | Software complete + all tests pass; physical acceptance pending interview → approve → calendar |
+| E. Interaction architecture | **NOT STARTED** | Exploration only; lifecycle audit (D1–D16) logged as backlog, no code |
+| F. Continuous voice session | **NOT STARTED** | Exploration only; no code |
+| G. Driving Mode | **NOT STARTED** | — |
+| H. Capability Router | **NOT STARTED** | — |
+| I. Coding-agent observability/control | **NOT STARTED** | — |
+| J. Proactive intelligence | **NOT STARTED** | — |
+| K. Hardening | **PARTIAL** | Phase 5 (commit `ebb3a1b`) + this checkpoint's fixes; further backlog documented |
+
+### Hardening Fixes (this checkpoint)
+
+**Fix 1 — CRITICAL: interrupted apply now recoverable** (`week_planning.py`)
+
+The Phase 5C CRITICAL finding is fixed: `applied_state = self._lifecycle.apply(
+approved, lease)` previously ran *before* `_calendar.apply()` succeeded and
+inside the lease-verification block, so a `CalendarInterruptedError` left the
+proposal transitioned to `approved` with a consumed one-shot lease and no
+recovery path (retries → `stale_proposal`). The lifecycle apply now runs **only
+after** the calendar apply succeeds, so a downstream failure returns
+`WeekPlanningProviderError` with the proposal still reviewable and lease intact
+for retry. Verified by `tests/test_week_planning.py` (17 passed).
+
+**Fix 2 — lint hygiene** (`relay_api.py`, `tests/test_relay_https.py`)
+
+ruff I001 import ordering in both files (auto-fix applied). `ruff check` on both
+files: clean.
+
+**Fix 3 — privacy hardening** (`.gitignore`, `scripts/scan_secrets.py`)
+
+- `.gitignore`: added `*.pem`, `*.key`, `id_rsa*`, `*.jks`, `credentials.json`,
+  `token.json`, wildcard `*lifeos_bootstrap*.yaml|*.md`, `**/.config/lifeos/`
+  (previously only two exact bootstrap filenames were ignored).
+- `scan_secrets.py`: added `from __future__ import annotations` — the
+  `list[dict[str, str | int]]` annotation crashed on macOS system Python 3.9.
+  Now runs clean (343 files, 0 findings) via `python3`.
+
+### Verified Test Results (2026-09-14)
+
+- Backend full suite: **393 passed, 30 skipped** (skips are PostgreSQL-only)
+- iOS: **73 passed**
+- Focused: relay_https + week_planning **30 passed**, incl. replay-409,
+  foreign-device 403, unconfigured 501
+- Ruff: 0 new violations; remaining 12 are pre-existing/intentional
+  (B008/TC001/PLR0913/0917 test helpers; FBT001/002 in `knowledge_import.py`
+  documented; S506 false positive on custom `_StrictSafeLoader`; C901
+  intentionally skipped). Invalid `# noqa` warnings are pre-existing.
+- Pyright: `scan_secrets.py` 0 errors (service src verified 0 errors earlier)
+- Bootstrap privacy: files live outside repo at `~/.config/lifeos/bootstrap/`
+  with 0600 perms; `git check-ignore` confirms exclusion; full `git log -p`
+  history scan: 0 secrets.
+
+### Committed Work
+
+- `mac/secretary_service/src/secretary_service/week_planning.py` — interrupted-apply fix
+- `mac/secretary_service/src/secretary_service/relay_api.py` — import ordering
+- `tests/test_relay_https.py` — import ordering
+- `.gitignore` — hardened secret/bootstrap patterns
+- `scripts/scan_secrets.py` — Python 3.9 compatibility
+
+### Backlog (logged, NOT started — belongs to later waves)
+
+- **Interaction/voice lifecycle defects** (iOS, from audit `bg_dde1edc2`,
+  NOT STARTED): D1/D2 background pause + closing event, D3 speech-delegate
+  coverage, D4/D5 cancellable tasks, D7 state persistence, D8
+  `completeFileProtection` → `.completeFileProtectionUntilFirstUserAuthentication`,
+  D11 stale-revision 409 loop, D14 wrap `DecodingError` as `invalidResponse` +
+  validate interview reply, D16 corrupt-file quarantine. Fix order per audit:
+  D8 → D16 → D11 → D1/D2 → D4/D5 → D14.
+- **Privacy audit follow-up**: annotate test-only deterministic keys as
+  non-secrets (`voice/e2e.py`, `slice/api.py`); pre-share grep of
+  `artifacts/verification/<run-id>/` reports before attaching anywhere.
+- **Knowledge import decisions**: `{"value": None}` (reject or skip); per-assertion
+  content digest to close tombstone-bypass gap.
+
+### Current Physical Gate (unchanged)
+
+Week planning interview on physical iPhone → Plan My Week → approve → verify real
+Google Calendar events. See "Current Gate" section above.

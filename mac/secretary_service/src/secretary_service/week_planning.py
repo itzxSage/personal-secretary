@@ -305,7 +305,6 @@ class WeekPlanningService:
                 ),
             )
             _ = self._leases.verify(lease, approved)
-            applied_state = self._lifecycle.apply(approved, lease)
         except (LeaseViolationError, PolicyViolationError) as error:
             raise WeekPlanningPolicyError(LEASE_REJECTED) from error
         plan = CalendarPlan(authorization=approved, events=EVENTS.validate_json(record.payload))
@@ -315,6 +314,7 @@ class WeekPlanningService:
             raise WeekPlanningProviderError(CALENDAR_AUTHORIZATION) from error
         except CalendarContractError as error:
             raise WeekPlanningProviderError(CALENDAR_CONTRACT) from error
+        applied_state = self._lifecycle.apply(approved, lease)
         self._store.transition(RecordKind.PROPOSAL, proposal_id, applied_state.value, context)
         return WeekPlanExecutionResult(
             proposal_id=proposal_id,
