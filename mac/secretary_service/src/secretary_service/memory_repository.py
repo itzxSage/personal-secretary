@@ -5,6 +5,7 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from datetime import datetime
 from typing import final
+from uuid import UUID
 
 from sqlcipher3 import dbapi2 as sqlcipher
 
@@ -23,6 +24,7 @@ from secretary_service.memory import (
     StaleMemoryRevisionError,
 )
 from secretary_service.models import RecordId, RecordKind, TransitionContext
+from secretary_service.transactions import domain_transaction
 
 
 @final
@@ -108,6 +110,12 @@ class MemoryRepository:
         self._auditor = auditor
         self._lifecycle = lifecycle
 
+    @contextmanager
+    def transaction(self) -> Generator[None]:
+        """Commit interview answers and their position together, including audit."""
+        with domain_transaction(self._connection):
+            yield
+
     def _read(self, memory_id: RecordId) -> MemoryRecord:
         row = self._connection.execute(
             "SELECT content_json FROM governed_memories WHERE memory_id=?", (str(memory_id),)
@@ -115,6 +123,15 @@ class MemoryRepository:
         if row is None:
             raise MemoryNotFoundError(memory_id=memory_id)
         return MemoryRecord.model_validate_json(str(row[0]))
+
+    def record_ids(self) -> tuple[RecordId, ...]:
+        """Inventory all live memory for encrypted backup erasure, including expired data."""
+        return tuple(
+            RecordId(UUID(str(row[0])))
+            for row in self._connection.execute(
+                "SELECT memory_id FROM governed_memories"
+            ).fetchall()
+        )
 
     def _insert(self, record: MemoryRecord) -> None:
         _ = self._connection.execute(
@@ -130,10 +147,14 @@ class MemoryRepository:
 
     def remember(self, record: MemoryRecord, context: TransitionContext) -> None:
         """Persist a new governed memory and provenance audit."""
-        self._auditor.verify()
-        self._insert(record)
-        self._auditor.append(record, "created", self._auditor.fingerprint(record), context)
-        self._connection.commit()
+        record = MemoryRecord.model_validate_json(record.model_dump_json())
+        with self.transaction():
+            self._auditor.verify()
+            if self.tombstones(record.memory_id):
+                msg = "forgotten memory identity cannot be reused"
+                raise ValueError(msg)
+            self._insert(record)
+            self._auditor.append(record, "created", self._auditor.fingerprint(record), context)
 
     def retrieve(self, scope: RetrievalScope) -> tuple[MemoryRecord, ...]:
         """Return only current, unexpired memories authorized for a context."""
@@ -156,26 +177,31 @@ class MemoryRepository:
         context: TransitionContext,
     ) -> MemoryRecord:
         """Replace a current revision while retaining only its keyed fingerprint."""
-        self._auditor.verify()
-        current = self._read(memory_id)
-        self._require_revision(current, correction.expected_revision)
-        fingerprint = self._auditor.fingerprint(current)
-        replacement = MemoryRecord(
-            memory_id=memory_id,
-            category=current.category,
-            content=correction.content,
-            provenance=correction.provenance,
-            confidence=correction.confidence,
-            retrieval_scopes=correction.retrieval_scopes,
-            created_at=current.created_at,
-            retain_until=correction.retain_until,
-            revision=current.revision + 1,
-        )
-        self._remove(current, MemoryRemovalReason.USER_CORRECTION, fingerprint, context)
-        self._insert(replacement)
-        self._auditor.append(current, "corrected", fingerprint, context)
-        self._connection.commit()
-        return replacement
+        with self.transaction():
+            self._auditor.verify()
+            current = self._read(memory_id)
+            self._require_revision(current, correction.expected_revision)
+            if current.knowledge is not None and correction.knowledge is None:
+                msg = "knowledge correction must explicitly preserve its governance"
+                raise ValueError(msg)
+            fingerprint = self._auditor.fingerprint(current)
+            replacement = MemoryRecord(
+                memory_id=memory_id,
+                category=current.category,
+                content=correction.content,
+                provenance=correction.provenance,
+                confidence=correction.confidence,
+                retrieval_scopes=correction.retrieval_scopes,
+                created_at=current.created_at,
+                retain_until=correction.retain_until,
+                revision=current.revision + 1,
+                knowledge=correction.knowledge,
+                interview=correction.interview,
+            )
+            self._remove(current, MemoryRemovalReason.USER_CORRECTION, fingerprint, context)
+            self._insert(replacement)
+            self._auditor.append(current, "corrected", fingerprint, context)
+            return replacement
 
     def delete(
         self,
@@ -184,13 +210,13 @@ class MemoryRepository:
         context: TransitionContext,
     ) -> None:
         """Erase a user-selected memory revision and retain a keyed fingerprint."""
-        self._auditor.verify()
-        current = self._read(memory_id)
-        self._require_revision(current, deletion.expected_revision)
-        fingerprint = self._auditor.fingerprint(current)
-        self._remove(current, MemoryRemovalReason.USER_DELETION, fingerprint, context)
-        self._auditor.append(current, "deleted", fingerprint, context)
-        self._connection.commit()
+        with self.transaction():
+            self._auditor.verify()
+            current = self._read(memory_id)
+            self._require_revision(current, deletion.expected_revision)
+            fingerprint = self._auditor.fingerprint(current)
+            self._remove(current, MemoryRemovalReason.USER_DELETION, fingerprint, context)
+            self._auditor.append(current, "deleted", fingerprint, context)
 
     def purge_expired(self, context: TransitionContext) -> int:
         """Erase all retention-expired content and retain keyed fingerprints."""
@@ -223,6 +249,17 @@ class MemoryRepository:
         fingerprint: str,
         context: TransitionContext,
     ) -> None:
+        # Old backup inventories omitted governed memory. If they could contain
+        # this assertion, fail closed rather than leave erased content recoverable.
+        _ = self._connection.execute(
+            """UPDATE backup_manifests SET wrapped_data_key=NULL, nonce=NULL, status='invalidated'
+            WHERE status='active' AND (
+                backup_id IN (SELECT backup_id FROM backup_records
+                              WHERE record_kind='normalized_fact' AND record_id=?)
+                OR (backup_id NOT IN (SELECT backup_id FROM backup_memory_coverage)
+                    AND created_at>=?))""",
+            (str(record.memory_id), record.created_at.isoformat()),
+        )
         with self._lifecycle.deletion():
             _ = self._connection.execute(
                 "DELETE FROM governed_memories WHERE memory_id=?", (str(record.memory_id),)

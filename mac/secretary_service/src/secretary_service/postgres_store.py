@@ -13,7 +13,13 @@ from uuid import UUID
 import psycopg
 from psycopg import sql
 
-from secretary_service.audit import AuditEntry, AuditTamperError, AuditVerification, sign_entry
+from secretary_service.audit import (
+    AuditEntry,
+    AuditMutation,
+    AuditTamperError,
+    AuditVerification,
+    sign_entry,
+)
 from secretary_service.cloud_crypto import CloudCipher, CloudStateKeys
 from secretary_service.domain_repository import RecordNotFoundError
 from secretary_service.models import (
@@ -26,6 +32,7 @@ from secretary_service.models import (
     record_kind,
 )
 from secretary_service.persistence import DomainRecords
+from secretary_service.postgres_conversations import PostgresConversations
 from secretary_service.postgres_devices import PostgresDevicePersistence
 from secretary_service.postgres_outbox import PostgresConsumptionStore, PostgresOutbox
 from secretary_service.postgres_types import PgConnection
@@ -43,6 +50,7 @@ class PostgresExecutionUnit:
     consumption: PostgresConsumptionStore
     outbox: PostgresOutbox
     devices: PostgresDevicePersistence
+    conversations: PostgresConversations
 
 
 @final
@@ -146,16 +154,21 @@ class PostgresStateStore:
         """Compose domain mutation, approval consumption, audit and job enqueue."""
         with self.domain_transaction() as records:
             # Bound to this repository's lifetime, even when a later unit opens.
-            def require_active() -> None:
-                if not isinstance(records, PostgresDomainRecords):
-                    raise TypeError
-                records.require_active()
+            if not isinstance(records, PostgresDomainRecords):
+                raise TypeError
+            require_active = records.require_active
+            devices = PostgresDevicePersistence(
+                self._connection, self._cipher, records, require_active
+            )
 
             yield PostgresExecutionUnit(
                 records,
                 PostgresConsumptionStore(self._connection, require_active),
                 PostgresOutbox(self._connection, self._cipher, records, require_active),
-                PostgresDevicePersistence(self._connection, self._cipher, records, require_active),
+                devices,
+                PostgresConversations(
+                    self._connection, self._cipher, devices, records.append_audit, require_active
+                ),
             )
 
     def verify_audit_chain(self) -> AuditVerification:
@@ -273,25 +286,39 @@ class PostgresDomainRecords:
         ).hex()
 
     def _audit(self, record: DomainRecord, context: TransitionContext, action: str) -> None:
+        kind = record_kind(record)
+        self.append_audit(
+            AuditMutation(
+                record_kind=kind,
+                record_id=record.record_id,
+                state="deleted" if action == "deleted" else record.state,
+                action_class=f"{kind.value}.{action}",
+                source_fingerprint=self._fingerprint(record),
+                context=context,
+            )
+        )
+
+    def append_audit(self, mutation: AuditMutation) -> None:
+        """Append one minimized audit fact under the owning unit's cell lock."""
+        self.require_active()
         row = self._connection.execute(
             "SELECT audit_sequence::text, audit_hash FROM lifeos_cell WHERE singleton=1"
         ).fetchone()
         if row is None:
             raise CellMismatchError
-        kind = record_kind(record)
         entry = AuditEntry(
             sequence=int(row[0]) + 1,
             previous_hash=row[1],
             entry_hash="",
-            occurred_at=context.occurred_at,
-            action_class=f"{kind.value}.{action}",
-            record_kind=kind,
-            record_id=record.record_id,
-            actor=context.actor,
-            correlation_id=context.correlation_id,
-            source_fingerprint=self._fingerprint(record),
+            occurred_at=mutation.context.occurred_at,
+            action_class=mutation.action_class,
+            record_kind=mutation.record_kind,
+            record_id=mutation.record_id,
+            actor=mutation.context.actor,
+            correlation_id=mutation.context.correlation_id,
+            source_fingerprint=mutation.source_fingerprint,
             action_metadata=json.dumps(
-                {"state": "deleted" if action == "deleted" else record.state},
+                {"state": mutation.state},
                 separators=(",", ":"),
                 sort_keys=True,
             ),

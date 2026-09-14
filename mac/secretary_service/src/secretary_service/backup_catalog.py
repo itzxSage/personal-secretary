@@ -41,7 +41,13 @@ class BackupCatalog:
     def __init__(self, connection: sqlcipher.Connection) -> None:
         self._connection = connection
 
-    def register(self, manifest: BackupManifest, records: Iterable[DomainRecord]) -> None:
+    def register(
+        self,
+        manifest: BackupManifest,
+        records: Iterable[DomainRecord],
+        *,
+        memory_ids: tuple[RecordId, ...] | None = None,
+    ) -> None:
         """Persist one envelope and an index of records it contains."""
         _ = self._connection.execute(
             "INSERT INTO backup_manifests VALUES(?, ?, ?, ?, ?, ?, ?)",
@@ -62,6 +68,17 @@ class BackupCatalog:
                 for record in records
             ),
         )
+        if memory_ids is not None:
+            _ = self._connection.executemany(
+                "INSERT OR IGNORE INTO backup_records VALUES(?, ?, ?)",
+                (
+                    (str(manifest.backup_id), RecordKind.NORMALIZED_FACT.value, str(memory_id))
+                    for memory_id in memory_ids
+                ),
+            )
+            _ = self._connection.execute(
+                "INSERT INTO backup_memory_coverage VALUES(?)", (str(manifest.backup_id),)
+            )
         self._connection.commit()
 
     def manifest(self, backup_id: BackupId) -> BackupManifest:

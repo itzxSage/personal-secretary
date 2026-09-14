@@ -53,6 +53,9 @@ AUTHORITY_MIGRATION: Final = Path(__file__).parent / "migrations" / "005_authori
 DEVICE_MIGRATION: Final = Path(__file__).parent / "migrations" / "006_device_enrollment.sql"
 RELAY_MIGRATION: Final = Path(__file__).parent / "migrations" / "007_conversation_relay.sql"
 RETENTION_MIGRATION: Final = Path(__file__).parent / "migrations" / "008_conversation_retention.sql"
+LIFE_MODEL_MIGRATION: Final = (
+    Path(__file__).parent / "migrations" / "009_life_model_backup_coverage.sql"
+)
 
 
 def _require_cipher(row: tuple[str | bytes, ...] | None, path: Path) -> None:
@@ -182,6 +185,7 @@ class EncryptedStateStore:
         _ = self._connection.executescript(CANONICAL_MIGRATION.read_text(encoding="utf-8"))
         _ = self._connection.executescript(RELAY_MIGRATION.read_text(encoding="utf-8"))
         _ = self._connection.executescript(RETENTION_MIGRATION.read_text(encoding="utf-8"))
+        _ = self._connection.executescript(LIFE_MODEL_MIGRATION.read_text(encoding="utf-8"))
         missing_retention = self._connection.execute(
             """SELECT r.conversation_id, c.created_at FROM relay_conversations r
             JOIN canonical_conversations c ON c.record_id=r.conversation_id
@@ -302,7 +306,7 @@ class EncryptedStateStore:
 
     def register_backup(self, manifest: BackupManifest) -> None:
         """Persist a backup envelope and contained-record index."""
-        self._backup_catalog.register(manifest, self.records())
+        self._backup_catalog.register(manifest, self.records(), memory_ids=self.memory.record_ids())
 
     def backup_manifest(self, backup_id: BackupId) -> BackupManifest:
         """Read one durable backup manifest."""

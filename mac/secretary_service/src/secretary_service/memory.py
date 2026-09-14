@@ -2,10 +2,11 @@
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Protocol, final, override
+from typing import Protocol, Self, final, override
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
+from secretary_service.life_knowledge import InterviewProgress, KnowledgeDetails, KnowledgeState
 from secretary_service.models import FrozenModel, NonEmpty, RecordId
 
 
@@ -17,6 +18,7 @@ class MemoryCategory(StrEnum):
     COMMITMENT = "commitment"
     EPISODE = "episode"
     OBSERVATION = "observation"
+    INTERVIEW = "interview"
 
 
 class RetrievalScope(StrEnum):
@@ -36,6 +38,8 @@ class MemorySource(StrEnum):
     CONVERSATION = "conversation"
     IMPORT = "import"
     INFERENCE = "inference"
+    CONNECTED_SYSTEM = "connected_system"
+    BEHAVIOR = "behavior"
 
 
 class MemoryRemovalReason(StrEnum):
@@ -74,6 +78,34 @@ class MemoryRecord(FrozenModel):
     created_at: datetime
     retain_until: datetime | None = None
     revision: int = Field(default=1, ge=1)
+    knowledge: KnowledgeDetails | None = None
+    interview: InterviewProgress | None = None
+
+    @model_validator(mode="after")
+    def validate_knowledge_source(self) -> Self:
+        """Never let imported/model evidence masquerade as user confirmation."""
+        if self.knowledge is not None:
+            if self.knowledge.state is KnowledgeState.CONFIRMED and self.provenance.source not in {
+                MemorySource.USER_STATEMENT,
+                MemorySource.USER_CORRECTION,
+            }:
+                msg = "confirmed knowledge requires explicit user provenance"
+                raise ValueError(msg)
+            if self.knowledge.state is KnowledgeState.OBSERVED and self.provenance.source not in {
+                MemorySource.CONNECTED_SYSTEM,
+                MemorySource.BEHAVIOR,
+                MemorySource.IMPORT,
+            }:
+                msg = "observed knowledge requires direct source evidence"
+                raise ValueError(msg)
+        if self.interview is not None and (
+            self.category is not MemoryCategory.INTERVIEW
+            or self.knowledge is not None
+            or self.retrieval_scopes != frozenset({RetrievalScope.PRIVATE})
+        ):
+            msg = "interview position must remain separate and private"
+            raise ValueError(msg)
+        return self
 
 
 class MemoryCorrection(FrozenModel):
@@ -85,6 +117,8 @@ class MemoryCorrection(FrozenModel):
     confidence: float = Field(ge=0.0, le=1.0)
     retrieval_scopes: frozenset[RetrievalScope] = Field(min_length=1)
     retain_until: datetime | None = None
+    knowledge: KnowledgeDetails | None = None
+    interview: InterviewProgress | None = None
 
 
 class MemoryDeletion(FrozenModel):

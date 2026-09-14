@@ -40,6 +40,30 @@ CREATE TABLE IF NOT EXISTS lifeos_devices (
     revoked BOOLEAN NOT NULL DEFAULT FALSE,
     envelope TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS lifeos_relay_identities (
+    participant_id UUID PRIMARY KEY,
+    envelope TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS lifeos_relay_devices (
+    device_id UUID PRIMARY KEY,
+    participant_id UUID NOT NULL REFERENCES lifeos_relay_identities,
+    envelope TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS lifeos_conversations (
+    conversation_id UUID PRIMARY KEY,
+    expires_at TIMESTAMPTZ NOT NULL,
+    envelope TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS lifeos_conversation_events (
+    event_id UUID PRIMARY KEY,
+    conversation_id UUID NOT NULL REFERENCES lifeos_conversations ON DELETE CASCADE,
+    sequence BIGINT NOT NULL CHECK (sequence > 0),
+    envelope TEXT NOT NULL,
+    UNIQUE (conversation_id, sequence)
+);
+CREATE TABLE IF NOT EXISTS lifeos_conversation_deletions (
+    conversation_id UUID PRIMARY KEY
+);
 CREATE OR REPLACE FUNCTION lifeos_reject_mutation() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -54,3 +78,8 @@ CREATE OR REPLACE TRIGGER lifeos_tombstones_immutable
 BEFORE UPDATE OR DELETE ON lifeos_tombstones FOR EACH ROW EXECUTE FUNCTION lifeos_reject_mutation();
 CREATE OR REPLACE TRIGGER lifeos_consumption_immutable
 BEFORE UPDATE OR DELETE ON lifeos_consumption FOR EACH ROW EXECUTE FUNCTION lifeos_reject_mutation();
+CREATE OR REPLACE TRIGGER lifeos_conversation_deletions_immutable
+BEFORE UPDATE OR DELETE ON lifeos_conversation_deletions
+FOR EACH ROW EXECUTE FUNCTION lifeos_reject_mutation();
+CREATE OR REPLACE TRIGGER lifeos_conversation_events_no_update
+BEFORE UPDATE ON lifeos_conversation_events FOR EACH ROW EXECUTE FUNCTION lifeos_reject_mutation();

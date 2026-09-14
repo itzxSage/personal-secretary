@@ -87,6 +87,7 @@ def run() -> int:
                 "tests/test_postgres_store.py",
                 "tests/test_persistence_contract.py",
                 "tests/test_postgres_outbox.py",
+                "tests/test_postgres_conversations.py",
             ]
             if args.junitxml is not None:
                 command.append(f"--junitxml={args.junitxml}")
