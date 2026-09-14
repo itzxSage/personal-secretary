@@ -6,14 +6,16 @@ from datetime import timedelta
 from typing import cast, final
 
 import pytest
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 
 from secretary_service.google_calendar_contract import (
     GOOGLE_CALENDAR_APP_SCOPE,
+    GOOGLE_CALENDAR_READ_SCOPES,
     LIFEOS_PROPOSED_CALENDAR,
     CalendarDelete,
     CalendarOAuthGrant,
     CalendarOwnership,
+    CalendarReadOAuthGrant,
     CalendarWrite,
     GoogleRefreshTokenSource,
     RemoteEvent,
@@ -374,3 +376,45 @@ def test_refresh_token_source_uses_grant_reference_and_caches_access(
     assert second.get_secret_value() == SHORT_LIVED_FIXTURE
     assert keys.lookups.count(REFERENCE_FIXTURE) == 1
     assert SHORT_LIVED_FIXTURE not in repr(source)
+
+
+def test_read_grant_cannot_be_used_as_write_grant() -> None:
+    read = CalendarReadOAuthGrant()
+    with pytest.raises(ValidationError, match="least-scope"):
+        _ = CalendarOAuthGrant.model_validate(read.model_dump())
+    with pytest.raises(ValidationError, match="read-only"):
+        _ = CalendarReadOAuthGrant(scopes=(GOOGLE_CALENDAR_APP_SCOPE,))
+
+
+def test_refresh_cache_is_isolated_by_grant_scope_and_reference(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    created: list[object] = []
+
+    @final
+    class FakeCredentials:
+        valid = True
+        token = SHORT_LIVED_FIXTURE
+
+        def __init__(self, **values: object) -> None:
+            created.append(values["scopes"])
+
+    monkeypatch.setattr("secretary_service.google_calendar_contract.Credentials", FakeCredentials)
+    source = GoogleRefreshTokenSource(OAuthFixtureKeys())
+    write = CalendarOAuthGrant(
+        secret_reference=REFERENCE_FIXTURE, scopes=(GOOGLE_CALENDAR_APP_SCOPE,)
+    )
+    read = CalendarReadOAuthGrant(secret_reference=REFERENCE_FIXTURE)
+    _ = source.access_token(write)
+    _ = source.access_token(read)
+    _ = source.access_token(read)
+    _ = source.access_token(write)
+    assert created == [
+        [GOOGLE_CALENDAR_APP_SCOPE],
+        list(GOOGLE_CALENDAR_READ_SCOPES),
+        [GOOGLE_CALENDAR_APP_SCOPE],
+    ]
+    with pytest.raises(CalendarAuthorizationError):
+        _ = source.access_token(write.model_copy(update={"secret_reference": "missing"}))
+    with pytest.raises(CalendarAuthorizationError):
+        _ = source.access_token(read.model_copy(update={"scopes": (GOOGLE_CALENDAR_APP_SCOPE,)}))

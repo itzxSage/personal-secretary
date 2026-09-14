@@ -22,6 +22,7 @@ from secretary_service.conversation_api import (
 from secretary_service.enrollment import DeviceId, DeviceRegistry
 from secretary_service.keys import DeterministicTestKeyProvider
 from secretary_service.models import ActorId, CorrelationId, RecordId, TransitionContext
+from secretary_service.postgres_store import PostgresExecutionUnit
 from secretary_service.relay_auth import (
     RequestAuthenticationError,
     RequestAuthenticator,
@@ -46,7 +47,7 @@ def context(clock: FakeClock) -> TransitionContext:
 
 
 def provision(
-    store: EncryptedStateStore,
+    store: EncryptedStateStore | PostgresExecutionUnit,
     clock: FakeClock,
     device_id: UUID = DEVICE,
     participant_id: UUID = PERSON,
