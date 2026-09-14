@@ -1,10 +1,16 @@
-"""Private mTLS conversation ingress. No provider calls, tools, approvals, or mutations."""
+"""Private mTLS conversation ingress. No tools or implicit authority.
+
+When a week-planning factory is configured, calendar execution applies exactly
+the device-approved payload under an internal lease. Without one, every
+week-planning route fails closed as not configured.
+"""
 
 import asyncio
 from collections.abc import AsyncGenerator, Callable
 from contextlib import AbstractContextManager, asynccontextmanager
-from typing import Annotated, ClassVar, Literal, cast, final
+from typing import Annotated, ClassVar, Final, Literal, cast, final
 from uuid import UUID
+from zoneinfo import ZoneInfoNotFoundError
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
@@ -18,6 +24,10 @@ from secretary_service.conversation_api import (
     ConversationEvent,
 )
 from secretary_service.enrollment import DeviceRegistry
+from secretary_service.google_calendar_errors import (
+    CalendarAuthorizationError,
+    CalendarContractError,
+)
 from secretary_service.knowledge_commands import (
     KnowledgeCommand,
     KnowledgeItem,
@@ -41,8 +51,18 @@ from secretary_service.relay_auth import (
 )
 from secretary_service.relay_store import RelayAccessError, RelayConflictError
 from secretary_service.storage import Clock, EncryptedStateStore
+from secretary_service.week_planning import (
+    WeekPlanApproval,
+    WeekPlanExecutionResult,
+    WeekPlanProposal,
+    WeekPlanProposalError,
+    WeekPlanningPolicyError,
+    WeekPlanningProviderError,
+    WeekPlanningService,
+)
 
 MAX_BODY_BYTES = 256 * 1024
+DEFAULT_PLANNING_TIMEZONE: Final = "America/Chicago"
 
 
 class CreateConversation(FrozenModel):
@@ -125,10 +145,23 @@ def _request_identity(request: Request) -> tuple[RequestProof, str, str]:
 class RelayRoutes:
     """HTTP handlers sharing one lifespan-owned encrypted connection."""
 
-    def __init__(self, stores: list[EncryptedStateStore], clock: Clock) -> None:
-        """Bind the lifespan store slot and clock without opening SQLite on another thread."""
+    def __init__(
+        self,
+        stores: list[EncryptedStateStore],
+        clock: Clock,
+        week_planning_factory: Callable[[EncryptedStateStore], WeekPlanningService] | None = None,
+        planning_timezone: str = DEFAULT_PLANNING_TIMEZONE,
+    ) -> None:
+        """Bind the lifespan store slot, clock, and optional governed planning service."""
         self.stores = stores
         self.clock = clock
+        self.week_planning_factory = week_planning_factory
+        self.planning_timezone = planning_timezone
+
+    def _week_planning(self) -> WeekPlanningService:
+        if self.week_planning_factory is None:
+            raise HTTPException(501, "week planning is not configured on this relay")
+        return self.week_planning_factory(self.stores[0])
 
     async def authenticate(self, request: Request) -> tuple[bytes, UUID, TransitionContext]:
         """Authenticate the exact bounded body before parsing any caller content."""
@@ -276,9 +309,58 @@ class RelayRoutes:
             raise HTTPException(422, "knowledge correction unavailable") from error
         return {"updated": True}
 
+    async def preview_week_plan(self, request: Request) -> WeekPlanProposal:
+        """Preview a deterministic week plan without issuing approvals or mutations."""
+        raw, device_id, context = await self.authenticate(request)
+        if raw:
+            raise HTTPException(422, "week-plan preview request body must be empty")
+        interview = self._interview(device_id)
+        try:
+            return self._week_planning().preview(
+                interview.subject_id, context.occurred_at, self.planning_timezone
+            )
+        except ZoneInfoNotFoundError as error:
+            raise HTTPException(422, "planning timezone is unavailable") from error
+        except (CalendarAuthorizationError, CalendarContractError) as error:
+            raise HTTPException(502, "calendar provider is unavailable") from error
+
+    async def approve_week_plan(
+        self, proposal_id: UUID, request: Request
+    ) -> WeekPlanExecutionResult:
+        """Apply the exact device-approved payload under an internal execution lease."""
+        raw, device_id, context = await self.authenticate(request)
+        planner = self._week_planning()
+        try:
+            envelope = WeekPlanApproval.model_validate_json(raw)
+        except ValidationError as error:
+            raise HTTPException(422, "invalid week-plan approval") from error
+        try:
+            return planner.approve_and_apply(
+                RecordId(proposal_id), envelope.approval, context, device_id
+            )
+        except WeekPlanProposalError as error:
+            if error.reason == "unknown_proposal":
+                raise HTTPException(404, "week-plan proposal not found") from error
+            if error.reason == "invalid_proposal":
+                raise HTTPException(422, "week-plan proposal is invalid") from error
+            raise HTTPException(409, "week-plan proposal is no longer reviewable") from error
+        except WeekPlanningPolicyError as error:
+            if error.reason == "lease_rejected":
+                raise HTTPException(409, "execution lease was rejected") from error
+            raise HTTPException(403, "week-plan approval was rejected") from error
+        except WeekPlanningProviderError as error:
+            if error.reason == "calendar_contract":
+                raise HTTPException(
+                    409, "calendar contract was rejected; resync before retrying"
+                ) from error
+            raise HTTPException(502, "calendar provider failed to apply the plan") from error
+
 
 def create_relay_app(
-    open_store: Callable[[], AbstractContextManager[EncryptedStateStore]], clock: Clock
+    open_store: Callable[[], AbstractContextManager[EncryptedStateStore]],
+    clock: Clock,
+    week_planning_factory: Callable[[EncryptedStateStore], WeekPlanningService] | None = None,
+    planning_timezone: str = DEFAULT_PLANNING_TIMEZONE,
 ) -> FastAPI:
     """Open encrypted state on the event-loop thread; fail closed without trusted TLS state."""
     stores: list[EncryptedStateStore] = []
@@ -294,7 +376,7 @@ def create_relay_app(
 
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.add_exception_handler(RequestValidationError, _invalid_request)
-    routes = RelayRoutes(stores, clock)
+    routes = RelayRoutes(stores, clock, week_planning_factory, planning_timezone)
     app.add_api_route("/v1/conversations", routes.create, methods=["POST"])
     app.add_api_route("/v1/conversations/{conversation_id}/events", routes.append, methods=["POST"])
     app.add_api_route("/v1/conversations/{conversation_id}/events", routes.read, methods=["GET"])
@@ -303,4 +385,6 @@ def create_relay_app(
     app.add_api_route("/v1/interview/turn", routes.interview_turn, methods=["POST"])
     app.add_api_route("/v1/knowledge", routes.knowledge, methods=["GET"])
     app.add_api_route("/v1/knowledge/{memory_id}", routes.correct_knowledge, methods=["POST"])
+    app.add_api_route("/v1/week-plan", routes.preview_week_plan, methods=["POST"])
+    app.add_api_route("/v1/week-plan/{proposal_id}/approve", routes.approve_week_plan, methods=["POST"])
     return app

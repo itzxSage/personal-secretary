@@ -6,11 +6,13 @@ import ssl
 import threading
 import time
 from collections.abc import Generator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
 from http.client import HTTPSConnection
 from pathlib import Path
 from typing import Literal, cast
+from uuid import uuid4
 
 import pytest
 import uvicorn
@@ -18,11 +20,17 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from secretary_service.authority import Approval, ApprovalProof, ProposalRecord, ProposalState
 from secretary_service.enrollment import DeviceId, DeviceRegistry
+from secretary_service.google_calendar_sandbox import GoogleCalendarSandbox
 from secretary_service.keys import DeterministicTestKeyProvider
-from secretary_service.models import ActorId
+from secretary_service.life_knowledge import RoutineFlexibility
+from secretary_service.models import ActorId, CorrelationId, Proposal, RecordId, RecordKind
+from secretary_service.memory import MemoryRecord
+from secretary_service.planner_results import PlanStatus
 from secretary_service.relay_api import (
     MAX_BODY_BYTES,
     EventAcknowledgment,
@@ -31,8 +39,34 @@ from secretary_service.relay_api import (
 )
 from secretary_service.relay_tls import PeerBoundH11Protocol, certificate_fingerprint
 from secretary_service.storage import EncryptedStateStore
+from secretary_service.week_planning import (
+    WeekPlanApproval,
+    WeekPlanExecutionResult,
+    WeekPlanProposal,
+    WeekPlanningService,
+)
 from tests.helpers import FakeClock
-from tests.test_conversation_relay import CONVERSATION, DEVICE, provision, signed, text_events
+from tests.test_conversation_relay import (
+    CONVERSATION,
+    DEVICE,
+    PERSON,
+    SIGNING_KEY,
+    provision,
+    signed,
+    text_events,
+)
+from tests.test_google_calendar import make_adapter
+from tests.test_week_planning import routine, seed
+
+# FastAPI serializes computed fields (e.g. PlanBlock.duration_minutes) into the
+# wire payload, which the canonical model forbids on input. Clients must tolerate
+# unknown keys (like the Swift decoder does), so mirror that behavior here.
+def parse_wire_week_plan_proposal(body: bytes) -> WeekPlanProposal:
+    """Parse a wire proposal the way a client must: tolerant of computed fields."""
+    payload = json.loads(body)
+    for block in payload.get("blocks", ()):
+        block.pop("duration_minutes", None)
+    return WeekPlanProposal.model_validate(payload)
 
 
 @dataclass(frozen=True)
@@ -132,6 +166,7 @@ class RunningRelay:
     clock: FakeClock
     path: Path
     keys: DeterministicTestKeyProvider
+    sandbox: object | None = None
 
     def request(
         self,
@@ -168,15 +203,16 @@ class RunningRelay:
             connection.close()
 
 
-@pytest.fixture
-def relay(
-    tmp_path: Path, keys: DeterministicTestKeyProvider, clock: FakeClock
+@contextmanager
+def serving(
+    app: FastAPI,
+    tls: TLSMaterial,
+    clock: FakeClock,
+    path: Path,
+    keys: DeterministicTestKeyProvider,
+    sandbox: object | None = None,
 ) -> Generator[RunningRelay]:
-    tls = certificates(tmp_path, clock)
-    path = tmp_path / "relay.sqlite"
-    with EncryptedStateStore.open(path, keys, clock) as store:
-        provision(store, clock, fingerprint=tls.fingerprint)
-    app = create_relay_app(lambda: EncryptedStateStore.open(path, keys, clock), clock)
+    """Run one uvicorn mTLS server and expose the signed request helper to the test."""
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", 0))
         port = cast("tuple[str, int]", listener.getsockname())[1]
@@ -202,11 +238,97 @@ def relay(
             while not server.started and thread.is_alive() and time.monotonic() < deadline:
                 _ = threading.Event().wait(0.01)
             assert server.started
-            yield RunningRelay(port, tls, clock, path, keys)
+            yield RunningRelay(port, tls, clock, path, keys, sandbox)
         finally:
             server.should_exit = True
             thread.join(timeout=5)
             assert not thread.is_alive()
+
+
+@pytest.fixture
+def relay(
+    tmp_path: Path, keys: DeterministicTestKeyProvider, clock: FakeClock
+) -> Generator[RunningRelay]:
+    tls = certificates(tmp_path, clock)
+    path = tmp_path / "relay.sqlite"
+    with EncryptedStateStore.open(path, keys, clock) as store:
+        provision(store, clock, fingerprint=tls.fingerprint)
+    app = create_relay_app(lambda: EncryptedStateStore.open(path, keys, clock), clock)
+    with serving(app, tls, clock, path, keys) as running:
+        yield running
+
+
+def person_routine(clock: FakeClock, number: int, title: str) -> MemoryRecord:
+    """One PREFERRED routine owned by the enrolled participant, not the ''user'' fixture."""
+    record = routine(clock, number, title, RoutineFlexibility.PREFERRED)
+    assert record.knowledge is not None
+    details = record.knowledge.model_copy(update={"subject_id": str(PERSON)})
+    return record.model_copy(update={"knowledge": details})
+
+
+@pytest.fixture
+def planning_relay(
+    tmp_path: Path, keys: DeterministicTestKeyProvider, clock: FakeClock
+) -> Generator[RunningRelay]:
+    """Relay with a governed week-planning service wired to a sandbox calendar provider."""
+    tls = certificates(tmp_path, clock)
+    path = tmp_path / "planning.sqlite"
+    adapter, sandbox = make_adapter(clock)
+    with EncryptedStateStore.open(path, keys, clock) as store:
+        provision(store, clock, fingerprint=tls.fingerprint)
+        seed(store, clock, person_routine(clock, 1, "Deep work"))
+
+    def factory(store: EncryptedStateStore) -> WeekPlanningService:
+        devices = DeviceRegistry(clock, store.devices)
+        return WeekPlanningService(
+            clock,
+            devices,
+            store,
+            adapter,
+            b"week-planning-lease-key",
+            timedelta(minutes=10),
+        )
+
+    app = create_relay_app(
+        lambda: EncryptedStateStore.open(path, keys, clock),
+        clock,
+        week_planning_factory=factory,
+        planning_timezone="UTC",
+    )
+    with serving(app, tls, clock, path, keys, sandbox) as running:
+        yield running
+
+
+def approval_for(
+    clock: FakeClock,
+    store: EncryptedStateStore,
+    proposal_id: RecordId,
+    device_id: DeviceId = DeviceId(str(DEVICE)),
+) -> Approval:
+    """Device-signed approval matching the persisted proposal payload."""
+    record = store.read(RecordKind.PROPOSAL, proposal_id)
+    assert isinstance(record, Proposal)
+    unsigned = Approval(
+        fact_id=RecordId(uuid4()),
+        proposal_id=record.record_id,
+        payload_hash=ProposalRecord(
+            proposal_id=record.record_id,
+            action_class=record.proposal_type,
+            payload=record.payload,
+            state=ProposalState(record.state),
+            created_at=record.created_at,
+        ).payload_hash(),
+        issued_at=clock.now(),
+        expires_at=clock.now() + timedelta(minutes=5),
+        idempotency_key="week-plan-approve",
+        actor=ActorId("user"),
+        correlation_id=CorrelationId("week-planning"),
+        proof=ApprovalProof.DEVICE_SIGNED,
+        device_id=device_id,
+    )
+    return unsigned.model_copy(
+        update={"signature": SIGNING_KEY.sign(unsigned.signing_bytes("calendar.apply")).hex()}
+    )
 
 
 def test_real_mtls_delivery_retry_and_resume(relay: RunningRelay) -> None:
@@ -308,3 +430,73 @@ def test_proxy_headers_cannot_supply_peer_identity(
             },
         )
         assert response.status_code == 401
+
+
+def test_week_plan_preview_via_mtls_is_mutation_free(planning_relay: RunningRelay) -> None:
+    sandbox = cast("GoogleCalendarSandbox", planning_relay.sandbox)
+    status, body = planning_relay.request("POST", "/v1/week-plan", b"")
+    assert status == 200
+    proposal = parse_wire_week_plan_proposal(body)
+    assert proposal.status is PlanStatus.FEASIBLE
+    assert sum(block.duration_minutes for block in proposal.blocks) == 10_080
+    assert proposal.gaps == ()
+    assert sandbox.mutation_count == 0
+
+
+def test_week_plan_approval_applies_once_via_mtls(planning_relay: RunningRelay) -> None:
+    sandbox = cast("GoogleCalendarSandbox", planning_relay.sandbox)
+    status, body = planning_relay.request("POST", "/v1/week-plan", b"")
+    assert status == 200
+    proposal = parse_wire_week_plan_proposal(body)
+    with EncryptedStateStore.open(
+        planning_relay.path, planning_relay.keys, planning_relay.clock
+    ) as store:
+        approval = approval_for(planning_relay.clock, store, proposal.proposal_id)
+    envelope = WeekPlanApproval(approval=approval).model_dump_json().encode()
+    target = f"/v1/week-plan/{proposal.proposal_id}/approve"
+    status, body = planning_relay.request("POST", target, envelope)
+    assert status == 200
+    result = WeekPlanExecutionResult.model_validate_json(body)
+    assert result.proposal_id == proposal.proposal_id
+    assert result.state is ProposalState.APPLIED
+    assert result.applied_operations == 1
+    assert len(sandbox.proposed_events) == 1
+    mutation_count = sandbox.mutation_count
+    # Replaying the exact approved payload is stale, not silently idempotent.
+    assert planning_relay.request("POST", target, envelope)[0] == 409
+    assert sandbox.mutation_count == mutation_count
+
+
+def test_week_plan_approval_from_foreign_device_is_403(planning_relay: RunningRelay) -> None:
+    sandbox = cast("GoogleCalendarSandbox", planning_relay.sandbox)
+    status, body = planning_relay.request("POST", "/v1/week-plan", b"")
+    assert status == 200
+    proposal = parse_wire_week_plan_proposal(body)
+    with EncryptedStateStore.open(
+        planning_relay.path, planning_relay.keys, planning_relay.clock
+    ) as store:
+        foreign = approval_for(
+            planning_relay.clock, store, proposal.proposal_id, DeviceId(str(uuid4()))
+        )
+    envelope = WeekPlanApproval(approval=foreign).model_dump_json().encode()
+    target = f"/v1/week-plan/{proposal.proposal_id}/approve"
+    assert planning_relay.request("POST", target, envelope)[0] == 403
+    assert sandbox.mutation_count == 0
+
+
+def test_week_plan_unknown_proposal_is_404(planning_relay: RunningRelay) -> None:
+    status, body = planning_relay.request("POST", "/v1/week-plan", b"")
+    assert status == 200
+    proposal = parse_wire_week_plan_proposal(body)
+    with EncryptedStateStore.open(
+        planning_relay.path, planning_relay.keys, planning_relay.clock
+    ) as store:
+        approval = approval_for(planning_relay.clock, store, proposal.proposal_id)
+    envelope = WeekPlanApproval(approval=approval).model_dump_json().encode()
+    missing = RecordId(uuid4())
+    assert planning_relay.request("POST", f"/v1/week-plan/{missing}/approve", envelope)[0] == 404
+
+
+def test_week_plan_unconfigured_relay_fails_closed(relay: RunningRelay) -> None:
+    assert relay.request("POST", "/v1/week-plan", b"")[0] == 501
+    assert relay.request("POST", f"/v1/week-plan/{uuid4()}/approve", b"{}")[0] == 501

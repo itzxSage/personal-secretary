@@ -11,94 +11,63 @@ plans the week → user approves → real Google Calendar updated.
 Physical iPhone invocation → real Mac-hosted Life Engine → deterministic week plan →
 proposal visible to user → approval → real Google Calendar events → verify on device.
 
-## Completed Tonight (Astra)
+## Wave 1 — Verified Foundation (Committed)
 
-### Life Interview / User Understanding (Backend — Complete)
-- `life_knowledge.py` — KnowledgeState, KnowledgeKind, LifeDomain, KnowledgeDetails with
-  temporal validity, evidence, provenance, staleness, conflict detection
-- `life_interview.py` — Resumable interview: begin/advance/pause/resume, answer/skip,
-  stale review, sensitive domain gating, open loop sweep, provenance tracking
-- `interview_catalog.py` — 22 domains, comprehensive questions, sensitive domain list
-- `life_model.py` — KnowledgeView with explanations, conflict detection, planning projection
-- `knowledge_commands.py` — Correct/confirm/private/forget/exclude_planning actions
+- **Week Planner backend** — `week_planning.py` (`WeekPlanningService` preview /
+  approve-and-apply), `planner.py` / `planner_placement.py`, 10,080-minute validation.
+- **iOS planning client** — `WeekPlanningContract.swift`, `LifeOSApprovalSigner`
+  (byte-exact Python `Approval.signing_bytes` parity), `SignedConversationRelay`
+  `previewWeekPlan()` / `approveWeekPlan(proposalID:approval:)`.
+- **Verification** — backend `test_week_planning.py` / `test_week_planner.py` /
+  `test_life_interview.py` / `test_life_knowledge.py`: 34 passed; iOS suite: 63 passed.
 
-### Week Planner (Backend — Complete)
-- `planner_models.py` — WeekPlanRequest (10,080-minute validation)
-- `planner.py` — propose_week() using existing propose_day() contract
-- `planner_placement.py` — Score-based best_placement optimization
+## Wave 2 — mTLS Week-Plan Relay Endpoints (Committed)
 
-### Relay API (Backend — Complete)
-- `relay_api.py` — /v1/interview, /v1/interview/turn, /v1/knowledge, /v1/knowledge/{id}
-  endpoints integrated with existing mTLS auth
-
-### iOS Client (Complete)
-- `AppBrand.swift` — Display name + design tokens
-- `LifeInterviewContract.swift` — Codable types for interview API
-- `NativeInterviewVoice.swift` — Full TTS/STT with Speech framework
-- `LifeInterviewView.swift` — Interview UI with voice, typing, skip, progress
-- `SignedConversationRelay.swift` — Interview HTTP methods
-- `ConversationSession.swift` — Interview load/advance methods
-- `ConversationShellView.swift` — "Know Me" button + sheet
-
-### Tests (Passing)
-- `test_life_interview.py` — 5 tests: catalog, answer/resume, stale rejection, review, sensitive gating
-- `test_week_planner.py` — 3 tests: 10080-min coverage, cross-day deps, validation
-- All 359 tests pass (30 skipped — PostgreSQL-only, expected)
-
-## Current Work
-
-Astra stopped after implementing the Life Interview subsystem and week planner.
-The next step is wiring the seven-day planning request through the conversation path.
-
-## Files Changed (Uncommitted)
-
-### New Files (Backend)
-- `mac/secretary_service/src/secretary_service/life_knowledge.py`
-- `mac/secretary_service/src/secretary_service/life_interview.py`
-- `mac/secretary_service/src/secretary_service/life_model.py`
-- `mac/secretary_service/src/secretary_service/interview_catalog.py`
-- `mac/secretary_service/src/secretary_service/knowledge_commands.py`
-- `mac/secretary_service/src/secretary_service/postgres_conversations.py`
-- `mac/secretary_service/src/secretary_service/migrations/009_life_model_backup_coverage.sql`
-- `tests/test_life_interview.py`
-- `tests/test_life_knowledge.py`
-- `tests/test_postgres_conversations.py`
-- `tests/test_week_planner.py`
-
-### New Files (iOS)
-- `ios/SecretaryApp/SecretaryApp/App/AppBrand.swift`
-- `ios/SecretaryApp/SecretaryApp/App/LifeInterviewView.swift`
-- `ios/SecretaryApp/SecretaryApp/App/NativeInterviewVoice.swift`
-- `ios/SecretaryApp/SecretaryApp/Client/LifeInterviewContract.swift`
-
-### Modified Files
-- Backend: planner.py, planner_models.py, planner_placement.py, relay_api.py,
-  memory.py, memory_repository.py, postgres_store.py, postgres_schema.sql,
-  google_calendar_contract.py, backup_catalog.py, storage.py
-- iOS: ConversationSession.swift, ConversationShellView.swift,
-  SignedConversationRelay.swift, project.yml, project.pbxproj, Info.plist
-- Scripts: google_calendar_oauth.py, verify_postgres.py
-- Tests: test_conversation_relay.py, test_google_calendar_live.py
+- **`relay_api.py`** now exposes:
+  - `POST /v1/week-plan` (empty signed body) → `WeekPlanProposal`
+  - `POST /v1/week-plan/{proposal_id}/approve` (body `{"approval": {...}}`) →
+    `WeekPlanExecutionResult` (`state: applied`, `lease_id`, `applied_operations`)
+  - `create_relay_app(open_store, clock, week_planning_factory=None,
+    planning_timezone=...)` — factory seam; when `None` the relay **fails closed
+    with 501** (the honest staging posture of `scripts/relay.py` serve mode,
+    which documents "no provider or execution capabilities").
+- **Error contract** (mapped from real service semantics via `.reason`):
+  401 auth, 403 forged/wrong-device, 404 unknown proposal, 409 stale/replay or
+  lease-rejected (proposal remains reviewable), 422 malformed/empty body,
+  502 provider failure (NOT applied), 501 unconfigured factory.
+- **`tests/test_relay_https.py`** — real loopback mTLS over uvicorn:
+  - `serving(...)` contextmanager + slim `relay` fixture
+  - `planning_relay` fixture: provisions device, seeds `person_routine`
+    (subject_id = the device's PERSON, the subject-matching gotcha), sandbox
+    `GoogleCalendarSandbox` via `make_adapter`, wired `WeekPlanningService`
+    factory, `planning_timezone="UTC"`
+  - `approval_for(...)` — reads the stored proposal, recomputes `payload_hash`,
+    signs `signing_bytes("calendar.apply")` with the enrolled `SIGNING_KEY`
+  - 6 new endpoint tests: preview mutation-free (FEASIBLE, 10,080 min,
+    `mutation_count == 0`), approve applies once (+ replay is 409, not silent
+    idempotency), foreign device 403, unknown proposal 404, unconfigured 501,
+    (malformed-body 422 covered via existing conversation-path validation).
+- **Verification** — focused relay + week_planning: 30 passed; full backend
+  suite: **381 passed, 30 skipped** (skips are PostgreSQL-only).
 
 ## Important Architecture Invariants
 
-- Life Engine owns canonical state; OpenClaw is subordinate channel infrastructure
+- Life Engine owns canonical state; channels are subordinate infrastructure
 - Proposal → approval → execution lease → external action (never bypassed)
+- Payload-bound approvals, expiration, idempotency, audit, replay resistance
 - KnowledgeState never silently promotes INFERRED → CONFIRMED
-- Conversation state separate from channel state
 - Deterministic, explainable scheduling over globally optimal
+- Writes only to the LifeOS **secondary** Google Calendar
 - Physical acceptance: real Google Calendar events visible after approval
 
-## Tests / Verification Run
+## Known Wire-Contract Notes
 
-- `uv run pytest -q` — 359 passed, 30 skipped (22.91s)
-- All new tests (life_interview, week_planner) pass
+- FastAPI serializes computed fields (`PlanBlock.duration_minutes`) into the wire
+  payload; the canonical model forbids them on input. Clients must tolerate unknown
+  keys (the Swift decoder does). `tests/test_relay_https.py` mirrors this with
+  `parse_wire_week_plan_proposal()` (strips the computed key before validating).
 
-## Known Failures
-
-None. All tests green.
-
-## Physical Device / User Gates
+## Physical Device / User Gates (Wave 4)
 
 - Apple signing / development team selection
 - iPhone plugged/unlocked, developer certificate trust
@@ -108,26 +77,21 @@ None. All tests green.
 
 ## Next Steps
 
-1. Wire seven-day planning request through conversation path
-2. Implement proposal generation that reads Life Model knowledge
-3. Implement proposal → approval → Google Calendar execution
-4. Verify Mac-hosted backend runs and is accessible via Tailscale
-5. Build/install/test on physical iPhone
-6. Resolve signing/network/permission issues
+- **Wave 3 (iOS UI/UX)** — extend `ConversationSession` with a week-plan proposal
+  state machine (echo the preview `payload_hash` when approving, fresh
+  `fact_id`/`issued_at`/`expires_at`+300s/`idempotency_key`/`actor`/
+  `correlation_id`, `action_class = "calendar.apply"`) and add a **"Plan My Week"**
+  button + proposal sheet to `ConversationShellView` using `AppBrand` tokens.
+  `SignedConversationRelay` already has the two HTTP methods.
+- **Wave 4** — full regression (backend `uv run pytest -q`, iOS
+  `swift test --package-path ios/SecretaryApp`), then physical iPhone build/install
+  and live Tailscale + Google Calendar verification.
+- Resolve signing / network / permission issues as they arise on device.
 
 ## Start Here
 
-The Life Interview subsystem is complete and tested. The week planner produces
-10,080-minute plans. The relay API exposes interview and knowledge endpoints.
-The iOS client has voice, typing, and progress UI.
-
-The missing link: when the user says "Plan my next seven days" in conversation,
-LifeOS needs to:
-1. Recognize the intent
-2. Gather relevant Life Model knowledge
-3. Build a WeekPlanRequest
-4. Generate the proposal
-5. Present it for approval
-6. Execute approved operations on Google Calendar
-
-This requires a conversation intent router that connects the existing pieces.
+Backend relay endpoints for week preview + approve are complete and tested over
+real mTLS. iOS already has the signed client methods. The missing link is the
+iOS UI: a "Plan My Week" affordance that calls `previewWeekPlan()`, presents the
+proposal, and on user approval signs and sends it via `approveWeekPlan()`,
+then shows the applied result.

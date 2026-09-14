@@ -16,14 +16,29 @@ Deliver working end-to-end LifeOS vertical on physical iPhone:
 - `life_model.py` — KnowledgeView with conflict detection, planning_knowledge() projection
 - `knowledge_commands.py` — Correct/confirm/private/forget/exclude_planning actions
 
-**Backend — Week Planner**
+**Backend — Week Planner (Wave 1 ✅)**
 - `planner_models.py` — WeekPlanRequest (10,080-minute validation, DST-safe)
-- `planner.py` — propose_week() reusing propose_day() contract
-- `planner_placement.py` — Score-based best_placement optimization
-- `tests/test_week_planner.py` — 3 tests passing (DST, cross-day deps, validation)
+- `week_planning.py` — `WeekPlanningService`: `preview()` (reads Life Model, dry-runs calendar,
+  persists PROPOSED record) and `approve_and_apply()` (device-signed approval → lifecycle →
+  lease → `GoogleCalendarAdapter.apply()` → persists APPLIED); raises
+  `WeekPlanProposalError` / `WeekPlanningPolicyError` / `WeekPlanningProviderError`
+- `planner.py` / `planner_placement.py` — propose_week() reusing propose_day() contract
+- `tests/test_week_planner.py` — 3 tests (DST, cross-day deps, validation)
+- `tests/test_week_planning.py` — preview/approve/replay/foreign-device/lease tests
 
-**Backend — Relay API**
-- `relay_api.py` — /v1/interview, /v1/knowledge endpoints with mTLS auth
+**Backend — Relay API (Wave 2 ✅)**
+- `relay_api.py` — /v1/interview, /v1/knowledge, plus week-plan endpoints:
+  - `POST /v1/week-plan` (empty signed body) → `WeekPlanProposal`
+  - `POST /v1/week-plan/{proposal_id}/approve` (body `{"approval": {...}}`) →
+    `WeekPlanExecutionResult`
+  - `create_relay_app(..., week_planning_factory=None, planning_timezone=...)` — factory
+    seam; when `None` the relay fails closed with **501** (staging posture of `scripts/relay.py`)
+  - Error contract: 401 auth / 403 wrong-device / 404 unknown / 409 stale-replay+lease /
+    422 malformed / 501 unconfigured / 502 provider-failure-not-applied
+- `tests/test_relay_https.py` — real loopback mTLS: `serving()` + `planning_relay`
+  fixture (provision + seed person-scoped routine + sandbox + service factory) and
+  6 endpoint tests (preview mutation-free, apply-once + replay 409, foreign device 403,
+  unknown 404, unconfigured 501)
 
 **Backend — Authority/Lease/Calendar (Existing Patterns)**
 - `ProposalLifecycle` (authority.py) — PROPOSED → APPROVED → APPLIED with payload hashing
@@ -31,30 +46,34 @@ Deliver working end-to-end LifeOS vertical on physical iPhone:
 - `GoogleCalendarAdapter` (google_calendar.py) — dry_run/apply to LifeOS Proposed calendar only
 - `RolloutCoordinator` (rollout.py) — Reference pattern for propose/approve/apply
 
-**iOS Client**
+**iOS Client (Wave 1 ✅)**
 - `AppBrand.swift`, `LifeDesign` — Design tokens
 - `LifeInterviewView.swift` — Full interview UI (voice, typing, skip, progress)
 - `NativeInterviewVoice.swift` — TTS/STT with Speech framework
 - `LifeInterviewContract.swift` — Codable DTOs
-- `SignedConversationRelay.swift` — Interview HTTP methods
-- `ConversationSession.swift` — loadInterview(), advanceInterview()
+- `WeekPlanningContract.swift` — Codable week-plan DTOs (Wave 1)
+- `LifeOSApprovalSigner` — byte-exact Python `Approval.signing_bytes` parity (Wave 1)
+- `SignedConversationRelay.swift` — Interview HTTP methods + `previewWeekPlan()` /
+  `approveWeekPlan(proposalID:approval:)` (Wave 2 client half)
+- `ConversationSession.swift` — loadInterview(), advanceInterview(), interview state
 - `ConversationShellView.swift` — "Know Me" button + sheet
 
 **Tests**
-- 359 tests pass (30 skipped — PostgreSQL-only)
+- Backend: **381 passed, 30 skipped** (PostgreSQL-only)
+- iOS: **63 passed**
 
 ---
 
-## 🔄 In Progress — Wave 1: Week Planning Service
+## 🔄 In Progress — Wave 3: Session + UI
 
-**Status:** About to start. Plan agent produced detailed implementation plan.
+**Status:** Backend Waves 1–2 complete and tested over real mTLS. Next: iOS session state + UI.
 
-### Next Implementation Tasks (Wave 1 — Parallel)
+### Next Implementation Tasks (Wave 3)
 
 | Task | File | Status |
 |---|---|---|
-| Backend: week_planning.py service + tests | `mac/secretary_service/src/secretary_service/week_planning.py` + `tests/test_week_planning.py` | **READY TO START** |
-| iOS: WeekPlanningContract.swift + relay methods | `ios/SecretaryApp/SecretaryApp/Client/WeekPlanningContract.swift` + `SignedConversationRelay.swift` | **READY TO START** |
+| iOS: week-plan state machine in session | `ios/SecretaryApp/SecretaryApp/App/ConversationSession.swift` | **READY TO START** |
+| iOS: "Plan My Week" button + proposal sheet | `ios/SecretaryApp/SecretaryApp/App/ConversationShellView.swift` | **READY TO START** |
 
 ### Key Patterns to Follow
 
@@ -221,4 +240,6 @@ make_adapter(clock) -> (GoogleCalendarAdapter, GoogleCalendarSandbox)
 
 ---
 
-**Ready for Wave 1 implementation.** The plan is decision-complete. Start with backend `week_planning.py` TDD and iOS `WeekPlanningContract.swift` in parallel.
+**Ready for Wave 3 implementation.** The plan is decision-complete. Start with iOS `ConversationSession`
+week-plan state, then the "Plan My Week" sheet in `ConversationShellView`. Waves 1–2 are done:
+see `docs/agent-handoff-current.md` for the verified state.
