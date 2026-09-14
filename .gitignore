@@ -25,3 +25,5 @@ artifacts/
 *.pfx
 *.mobileprovision
 client_secret_*.json
+.omo/
+run-continuation/
