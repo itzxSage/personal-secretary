@@ -3,7 +3,7 @@
 import asyncio
 from collections.abc import AsyncGenerator, Callable
 from contextlib import AbstractContextManager, asynccontextmanager
-from typing import Annotated, ClassVar, cast, final
+from typing import Annotated, ClassVar, Literal, cast, final
 from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -18,7 +18,22 @@ from secretary_service.conversation_api import (
     ConversationEvent,
 )
 from secretary_service.enrollment import DeviceRegistry
-from secretary_service.models import ActorId, CorrelationId, FrozenModel, TransitionContext
+from secretary_service.knowledge_commands import (
+    KnowledgeCommand,
+    KnowledgeItem,
+    correct_knowledge,
+    knowledge_items,
+)
+from secretary_service.life_interview import InterviewReply, LifeInterview
+from secretary_service.life_model import LifeModel
+from secretary_service.memory import StaleMemoryRevisionError
+from secretary_service.models import (
+    ActorId,
+    CorrelationId,
+    FrozenModel,
+    RecordId,
+    TransitionContext,
+)
 from secretary_service.relay_auth import (
     RequestAuthenticationError,
     RequestAuthenticator,
@@ -57,6 +72,16 @@ class EventPage(FrozenModel):
 
     events: list[ConversationEvent]
     cursor: int
+
+
+class InterviewTurn(FrozenModel):
+    """Device-authenticated response to a particular current question."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
+    expected_revision: int = Field(ge=1)
+    action: Literal["answer", "skip", "pause", "resume"]
+    text: str = Field(default="", max_length=8000)
+    question_key: str | None = None
 
 
 async def _body(request: Request) -> bytes:
@@ -195,6 +220,62 @@ class RelayRoutes:
         else:
             return {"deleted": True}
 
+    def _interview(self, device_id: UUID) -> LifeInterview:
+        device = self.stores[0].conversations.device(device_id)
+        if device is None:
+            raise HTTPException(403, "user unavailable")
+        return LifeInterview(self.stores[0].memory, str(device.participant_id))
+
+    async def start_interview(self, request: Request) -> InterviewReply:
+        """Resume the authenticated person's interview without executing any tools."""
+        raw, device_id, context = await self.authenticate(request)
+        if raw:
+            raise HTTPException(422, "start request body must be empty")
+        return self._interview(device_id).begin(context)
+
+    async def interview_turn(self, request: Request) -> InterviewReply:
+        """Save typed or spoken answers using the same provenance and revision path."""
+        raw, device_id, context = await self.authenticate(request)
+        try:
+            turn = InterviewTurn.model_validate_json(raw)
+            return self._interview(device_id).advance(
+                turn.expected_revision,
+                turn.action,
+                turn.text,
+                context,
+                question_key=turn.question_key,
+            )
+        except StaleMemoryRevisionError as error:
+            raise HTTPException(409, "interview changed; resume before retrying") from error
+        except ValueError as error:
+            raise HTTPException(422, "answer unavailable; check the current question") from error
+
+    async def knowledge(self, request: Request) -> tuple[KnowledgeItem, ...]:
+        """Assemble What do you know about me from the authenticated Life Model."""
+        _, device_id, context = await self.authenticate(request)
+        interview = self._interview(device_id)
+        return knowledge_items(
+            LifeModel(interview.memory), interview.subject_id, context.occurred_at
+        )
+
+    async def correct_knowledge(self, memory_id: UUID, request: Request) -> dict[str, bool]:
+        """Correct or forget one user-selected assertion without granting external authority."""
+        raw, device_id, context = await self.authenticate(request)
+        interview = self._interview(device_id)
+        try:
+            correct_knowledge(
+                LifeModel(interview.memory),
+                interview.subject_id,
+                RecordId(memory_id),
+                KnowledgeCommand.model_validate_json(raw),
+                context,
+            )
+        except StaleMemoryRevisionError as error:
+            raise HTTPException(409, "knowledge changed; refresh before correcting") from error
+        except ValueError as error:
+            raise HTTPException(422, "knowledge correction unavailable") from error
+        return {"updated": True}
+
 
 def create_relay_app(
     open_store: Callable[[], AbstractContextManager[EncryptedStateStore]], clock: Clock
@@ -218,4 +299,8 @@ def create_relay_app(
     app.add_api_route("/v1/conversations/{conversation_id}/events", routes.append, methods=["POST"])
     app.add_api_route("/v1/conversations/{conversation_id}/events", routes.read, methods=["GET"])
     app.add_api_route("/v1/conversations/{conversation_id}", routes.delete, methods=["DELETE"])
+    app.add_api_route("/v1/interview", routes.start_interview, methods=["POST"])
+    app.add_api_route("/v1/interview/turn", routes.interview_turn, methods=["POST"])
+    app.add_api_route("/v1/knowledge", routes.knowledge, methods=["GET"])
+    app.add_api_route("/v1/knowledge/{memory_id}", routes.correct_knowledge, methods=["POST"])
     return app
