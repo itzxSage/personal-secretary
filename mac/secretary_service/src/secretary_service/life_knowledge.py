@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import ClassVar, Literal, Self
 from zoneinfo import ZoneInfo
 
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, JsonValue, model_validator
 
 from secretary_service.models import FrozenModel, NonEmpty, RecordId
 
@@ -179,6 +179,20 @@ def require_aware(value: datetime) -> None:
         raise ValueError(msg)
 
 
+class KnowledgeSourceEvidence(KnowledgeModel):
+    """Original assertion metadata, retained privately without asserting current truth."""
+
+    source_id: NonEmpty
+    source_path: NonEmpty
+    document_sha256: NonEmpty
+    generated_at: datetime
+    declared_state: KnowledgeState | None = None
+    observation_precision: Literal["instant", "day", "month", "year", "source_snapshot"] = (
+        "source_snapshot"
+    )
+    original: dict[str, JsonValue]
+
+
 class KnowledgeDetails(KnowledgeModel):
     """One subject/predicate assertion with explicit evidence and validity."""
 
@@ -202,6 +216,8 @@ class KnowledgeDetails(KnowledgeModel):
     evidence_ids: tuple[RecordId, ...] = ()
     conflicts_with: tuple[RecordId, ...] = ()
     planning_allowed: bool = False
+    source_evidence: KnowledgeSourceEvidence | None = None
+    superseded_by: RecordId | None = None
     routine: RoutineDetails | None = None
     project: ProjectDetails | None = None
     open_loop: OpenLoopDetails | None = None
@@ -262,6 +278,7 @@ class InterviewProgress(KnowledgeModel):
 
     schema_version: Literal[1] = 1
     subject_id: NonEmpty
+    objective: Literal["understanding", "week_planning"] = "understanding"
     phase: Literal["active", "paused", "continuous"] = "active"
     skipped_keys: frozenset[str] = frozenset()
     permitted_domains: frozenset[LifeDomain] = frozenset()

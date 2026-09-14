@@ -34,6 +34,11 @@ struct RelayConnectionConfiguration: Codable {
         ConversationIdentity(conversationID: conversationID, participantID: participantID, deviceID: deviceID)
     }
 
+    func approvalSigner() throws -> LifeOSApprovalSigner {
+        let data = try keychainData(account: signingKeyAccount)
+        return try LifeOSApprovalSigner(signingKey: Curve25519.Signing.PrivateKey(rawRepresentation: data))
+    }
+
     func client() throws -> SignedConversationRelay {
         let keyQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

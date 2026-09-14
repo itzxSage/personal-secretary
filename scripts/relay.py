@@ -6,6 +6,7 @@ import ssl
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import uvicorn
 from cryptography import x509
@@ -19,6 +20,7 @@ from secretary_service.models import ActorId, CorrelationId, RecordId, Transitio
 from secretary_service.relay_api import create_relay_app
 from secretary_service.relay_tls import PeerBoundH11Protocol, certificate_fingerprint
 from secretary_service.storage import EncryptedStateStore
+from secretary_service.week_planning_live import live_week_planning_factory
 
 
 class SystemClock:
@@ -28,6 +30,23 @@ class SystemClock:
     def now() -> datetime:
         """Return current UTC time."""
         return datetime.now(UTC)
+
+
+def _serve_arguments(commands: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None:
+    serve = commands.add_parser(
+        "serve", help="run mTLS ingress; live week planning requires an explicit opt-in"
+    )
+    _ = serve.add_argument(
+        "--enable-week-planning",
+        action="store_true",
+        help="enable real Google Calendar previews and device-approved week-plan execution",
+    )
+    _ = serve.add_argument("--planning-timezone", default="America/Chicago")
+    _ = serve.add_argument("--host", default="127.0.0.1")
+    _ = serve.add_argument("--port", type=int, default=8443)
+    _ = serve.add_argument("--server-cert", required=True, type=Path)
+    _ = serve.add_argument("--server-key", required=True, type=Path)
+    _ = serve.add_argument("--client-ca", required=True, type=Path)
 
 
 def main() -> None:
@@ -48,14 +67,7 @@ def main() -> None:
         type=Path,
         help="file containing 32-byte Ed25519 public key as hex",
     )
-    serve = commands.add_parser(
-        "serve", help="run staging ingress; no provider or execution capabilities"
-    )
-    _ = serve.add_argument("--host", default="127.0.0.1")
-    _ = serve.add_argument("--port", type=int, default=8443)
-    _ = serve.add_argument("--server-cert", required=True, type=Path)
-    _ = serve.add_argument("--server-key", required=True, type=Path)
-    _ = serve.add_argument("--client-ca", required=True, type=Path)
+    _serve_arguments(commands)
     _ = commands.add_parser("prune", help="purge conversations past the fixed retention deadline")
     args = parser.parse_args()
     clock = SystemClock()
@@ -121,7 +133,18 @@ def main() -> None:
             )
         print(f"Expired conversations purged: {count}")
         return
-    app = create_relay_app(lambda: EncryptedStateStore.open(args.state, keys, clock), clock)
+    try:
+        _ = ZoneInfo(args.planning_timezone)
+    except ZoneInfoNotFoundError:
+        parser.error("unknown planning timezone")
+    app = create_relay_app(
+        lambda: EncryptedStateStore.open(args.state, keys, clock),
+        clock,
+        week_planning_factory=(
+            live_week_planning_factory(clock, keys) if args.enable_week_planning else None
+        ),
+        planning_timezone=args.planning_timezone,
+    )
     uvicorn.run(
         app,
         host=args.host,

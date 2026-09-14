@@ -1,5 +1,14 @@
 # Codex Handoff — LifeOS Week Planning Vertical
 
+## Current session update
+
+Wave 3 is implemented locally; see `agent-handoff-current.md` for current evidence.
+The signed app is installed on the physical iPhone and live Calendar wiring is
+explicitly enabled on the Mac. Physical acceptance remains pending: the enrolled
+user has no structured planning knowledge, so the real preview has no Calendar
+changes. Obtain real routines before the approval test. The historical plan below
+records the starting checkpoint, not a claim that physical acceptance is complete.
+
 ## Mission
 
 Deliver working end-to-end LifeOS vertical on physical iPhone:

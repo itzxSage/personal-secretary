@@ -28,6 +28,10 @@ let package = Package(
             path: "SecretaryApp/Contract"
         ),
         .testTarget(
+            name: "SecretaryAppTests",
+            dependencies: ["SecretaryApp", "SecretaryClient", "SecretaryContract"]
+        ),
+        .testTarget(
             name: "SecretaryContractTests",
             dependencies: ["SecretaryContract"]
         ),

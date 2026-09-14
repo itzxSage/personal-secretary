@@ -463,3 +463,65 @@ TOPICS = (
         ),
     ),
 )
+
+
+# A focused interview objective reuses canonical topic keys and answer persistence.
+WEEK_PLANNING_TOPICS = (
+    InterviewTopic(
+        "work.role",
+        LifeDomain.WORK,
+        KnowledgeKind.FACT,
+        "What is your current employment situation?",
+        staleness_days=7,
+    ),
+    InterviewTopic(
+        "work.schedule",
+        LifeDomain.WORK,
+        KnowledgeKind.FACT,
+        "For the next seven days, which dates will you work, and what are the start and end times? Include your timezone and any commute or preparation time.",
+        staleness_days=7,
+    ),
+    InterviewTopic(
+        "planning.fixed_commitments",
+        LifeDomain.PLANNING,
+        KnowledgeKind.COMMITMENT,
+        "What fixed commitments in the next seven days are missing from your digital calendar? Include dates, times, and travel.",
+        staleness_days=7,
+    ),
+    InterviewTopic(
+        "values.commitments",
+        LifeDomain.VALUES,
+        KnowledgeKind.COMMITMENT,
+        "Which community or spiritual commitments are current this week, and what are their dates and times?",
+        staleness_days=7,
+    ),
+    *(
+        next(t for t in TOPICS if t.key == key)
+        for key in (
+            "education.program",
+            "education.classes",
+            "routines.sleep",
+            "routines.exercise",
+            "routines.meals",
+            "projects.inventory",
+            "now.success",
+        )
+    ),
+    InterviewTopic(
+        "open_loops.known",
+        LifeDomain.OPEN_LOOPS,
+        KnowledgeKind.OPEN_LOOP,
+        "Let's reconcile the tasks already in your inbox. Which are still active, done, or no longer needed? We will clarify them before scheduling.",
+    ),
+    *(
+        next(t for t in TOPICS if t.key == key)
+        for key in (
+            "open_loops.head",
+            "open_loops.promises",
+            "open_loops.avoiding",
+            "open_loops.bothering",
+            "open_loops.away",
+            "open_loops.else",
+        )
+    ),
+)

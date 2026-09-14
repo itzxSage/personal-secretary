@@ -64,7 +64,7 @@ class LifeModel:
             if details is None:
                 continue
             state = details.effective_state(now)
-            current = details.current_at(now)
+            current = details.current_at(now) and details.superseded_by is None
             if (
                 current
                 and details.cardinality == "one"
@@ -74,6 +74,7 @@ class LifeModel:
                     and other.knowledge.key == details.key
                     and other.knowledge.cardinality == "one"
                     and other.knowledge.current_at(now)
+                    and other.knowledge.superseded_by is None
                     and other.knowledge.state is not KnowledgeState.UNKNOWN
                     and details.state is not KnowledgeState.UNKNOWN
                     and other.content.casefold().strip() != record.content.casefold().strip()

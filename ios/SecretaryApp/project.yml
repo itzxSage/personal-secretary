@@ -60,6 +60,18 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+  SecretaryAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/SecretaryAppTests
+    dependencies:
+      - target: SecretaryApp
+      - target: SecretaryClient
+      - target: SecretaryContract
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
   SecretaryContractTests:
     type: bundle.unit-test
     platform: iOS
@@ -86,9 +98,11 @@ schemes:
     build:
       targets:
         SecretaryApp: all
+        SecretaryAppTests: [test]
         SecretaryContractTests: [test]
         SecretaryClientTests: [test]
     test:
       targets:
+        - SecretaryAppTests
         - SecretaryContractTests
         - SecretaryClientTests

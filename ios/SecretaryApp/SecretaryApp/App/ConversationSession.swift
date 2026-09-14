@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Observation
 import SecretaryClient
@@ -25,6 +26,23 @@ final class ConversationSession {
     private let endVoiceSessionCommand: EndVoiceSession
     private let identity: ConversationIdentity
     private let relay: SignedConversationRelay?
+    private let approvalSigner: (any LifeOSApprovalSigning)?
+
+    enum WeekPlanState: Equatable {
+        case idle, planning, proposed, applying, applied
+        case recoverableError(String)
+    }
+    private(set) var weekPlanState: WeekPlanState = .idle
+    private(set) var weekPlanProposal: WeekPlanProposal?
+    private(set) var weekPlanResult: WeekPlanExecutionResult?
+    var canApproveWeekPlan: Bool {
+        guard weekPlanState == .proposed, let proposal = weekPlanProposal else { return false }
+        return !proposal.calendarDryRun.operations.isEmpty && proposal.calendarDryRun.operations.allSatisfy {
+            $0.operation == .insert || $0.operation == .update || $0.operation == .noop
+        }
+    }
+    var isWeekPlanBusy: Bool { weekPlanState == .planning || weekPlanState == .applying }
+
     private(set) var isBusy = false
     private(set) var hasDeliveryConflict = false
     var isRelayConfigured: Bool { relay != nil }
@@ -41,17 +59,27 @@ final class ConversationSession {
     private var relayDiagnostic = "not attempted"
 #endif
 
-    init() throws {
+    convenience init() throws {
         let configuration = try RelayConnectionConfiguration.load()
         let identity = configuration?.identity ?? ConversationIdentity(
             conversationID: UUID(uuidString: "55555555-5555-4555-8555-555555555555")!,
             participantID: UUID(uuidString: "11111111-1111-4111-8111-111111111111")!,
             deviceID: UUID(uuidString: "33333333-3333-4333-8333-333333333333")!
         )
+        try self.init(
+            identity: identity, relay: configuration?.client(),
+            approvalSigner: configuration?.approvalSigner(),
+            directory: Self.outboxDirectory(), outboxKey: OutboxKeyStore.shared.key()
+        )
+    }
+
+    init(
+        identity: ConversationIdentity, relay: SignedConversationRelay?,
+        approvalSigner: (any LifeOSApprovalSigning)?, directory: URL, outboxKey: SymmetricKey
+    ) {
         self.identity = identity
-        self.relay = try configuration?.client()
-        let directory = Self.outboxDirectory()
-        let outboxKey = try OutboxKeyStore.shared.key()
+        self.relay = relay
+        self.approvalSigner = approvalSigner
         let outbox = EncryptedOutbox(directory: directory, key: outboxKey)
         self.outbox = outbox
         self.cache = EncryptedConversationCache(directory: directory, key: outboxKey)
@@ -64,6 +92,69 @@ final class ConversationSession {
         )
         self.adapter = InvocationAdapter(startVoiceSession: command)
         self.router = DeepLinkRouter(adapter: adapter)
+    }
+
+    func previewWeekPlan() async {
+        guard !isWeekPlanBusy else { return }
+        guard let relay else {
+            weekPlanState = .recoverableError("Connect to your Life Engine on your Mac, then try again.")
+            return
+        }
+        weekPlanState = .planning
+        weekPlanResult = nil
+        do {
+            let proposal = try await relay.previewWeekPlan()
+            guard proposal.windowEnd > proposal.windowStart,
+                TimeZone(identifier: proposal.timezone) != nil,
+                !proposal.payloadHash.isEmpty else { throw ConversationRelayError.invalidResponse }
+            weekPlanProposal = proposal
+            weekPlanState = .proposed
+        } catch {
+            weekPlanState = .recoverableError(Self.weekPlanError(error, applying: false))
+        }
+    }
+
+    func approveWeekPlan() async {
+        // Only an explicit approval of the currently displayed preview may execute.
+        // Errors require a new preview and a new review, never an automatic replay.
+        guard canApproveWeekPlan, let proposal = weekPlanProposal else { return }
+        guard let relay, let approvalSigner else {
+            weekPlanState = .recoverableError("Reconnect this iPhone to your Life Engine before approving.")
+            return
+        }
+        weekPlanState = .applying
+        do {
+            let now = Date()
+            let approval = try approvalSigner.approval(for: LifeOSApprovalInput(
+                factID: UUID(), proposalID: proposal.proposalID, payloadHash: proposal.payloadHash,
+                issuedAt: now, expiresAt: now.addingTimeInterval(300),
+                idempotencyKey: UUID().uuidString.lowercased(), actor: "user",
+                correlationID: UUID(), deviceID: identity.deviceID
+            ), actionClass: "calendar.apply")
+            let result = try await relay.approveWeekPlan(proposalID: proposal.proposalID, approval: approval)
+            guard result.appliedOperations >= 0 else { throw ConversationRelayError.invalidResponse }
+            weekPlanResult = result
+            weekPlanState = .applied
+        } catch {
+            weekPlanState = .recoverableError(Self.weekPlanError(error, applying: true))
+        }
+    }
+
+    private static func weekPlanError(_ error: Error, applying: Bool) -> String {
+        switch error {
+        case ConversationRelayError.httpStatus(409):
+            return "This plan can no longer be applied as shown. Check your LifeOS calendar, then create a fresh preview to review."
+        case ConversationRelayError.httpStatus(401), ConversationRelayError.httpStatus(403):
+            return "Reconnect this iPhone to your Life Engine, then create a fresh preview."
+        case ConversationRelayError.httpStatus(501):
+            return "Week planning isn't ready on your Mac yet. Finish connecting Calendar, then try again."
+        case ConversationRelayError.httpStatus(404):
+            return "This plan is no longer available. Create a fresh preview to continue."
+        default:
+            return applying
+                ? "We couldn't confirm that your week was applied. Check your LifeOS calendar before creating a fresh preview. Some changes may already be there."
+                : "We couldn't load a complete plan from your Mac. Check your connection and try again."
+        }
     }
 
     func loadInterview() async {
