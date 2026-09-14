@@ -1,6 +1,6 @@
 """Validated inputs for deterministic proposed-day planning."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal, Self
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -193,6 +193,23 @@ class DayPlanRequest(PlannerModel):
         baseline_ids = [block.block_id for block in self.baseline_blocks]
         if len(baseline_ids) != len(set(baseline_ids)):
             message = "duplicate baseline block_id"
+            raise ValueError(message)
+        return self
+
+
+class WeekPlanRequest(DayPlanRequest):
+    """One continuous seven-day snapshot using the existing planner contract.
+
+    The horizon is 168 elapsed hours, including across clock changes. A caller
+    must supply canonical activities for the entire interval, not repeat a day
+    snapshot. No constraints or preferences are fabricated on the client.
+    """
+
+    @model_validator(mode="after")
+    def validate_week(self) -> Self:
+        """Require exactly 10,080 real minutes, with no DST ambiguity."""
+        if self.window_end.astimezone(UTC) - self.window_start.astimezone(UTC) != timedelta(days=7):
+            message = "week planning requires exactly 10,080 elapsed minutes"
             raise ValueError(message)
         return self
 

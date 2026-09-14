@@ -22,6 +22,11 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 GOOGLE_CALENDAR_APP_SCOPE: Final = "https://www.googleapis.com/auth/calendar.app.created"
+GOOGLE_CALENDAR_READ_SCOPES: Final = (
+    "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+    "https://www.googleapis.com/auth/calendar.events.readonly",
+)
+DEFAULT_READ_REFRESH_REFERENCE: Final = "google-calendar-read-refresh-token"
 LIFEOS_PROPOSED_CALENDAR: Final = "LifeOS Proposed"
 GOOGLE_TOKEN_URI: Final = "https://oauth2.googleapis.com/token"  # noqa: S105 - public endpoint
 DEFAULT_REFRESH_REFERENCE: Final = "google-calendar-refresh-token"
@@ -44,6 +49,21 @@ class CalendarOAuthGrant(FrozenModel):
         """Reject grants broader than app-created calendar access."""
         if self.scopes != (GOOGLE_CALENDAR_APP_SCOPE,):
             message = "Google Calendar grant must use only the least-scope app-created scope"
+            raise ValueError(message)
+        return self
+
+
+class CalendarReadOAuthGrant(FrozenModel):
+    """Separate read-only consent for discovering existing fixed commitments."""
+
+    secret_reference: NonEmpty = DEFAULT_READ_REFRESH_REFERENCE
+    scopes: tuple[NonEmpty, ...] = GOOGLE_CALENDAR_READ_SCOPES
+
+    @model_validator(mode="after")
+    def require_read_only(self) -> Self:
+        """Reject write scope or incomplete read consent at the boundary."""
+        if self.scopes != GOOGLE_CALENDAR_READ_SCOPES:
+            message = "existing calendar access requires exactly the read-only scopes"
             raise ValueError(message)
         return self
 
@@ -208,16 +228,24 @@ class GoogleRefreshTokenSource:
         self._client_id_reference = client_id_reference
         self._client_secret_reference = client_secret_reference
         self._credentials: Credentials | None = None
+        self._credential_grant: tuple[str, tuple[str, ...]] | None = None
         self._lock = threading.Lock()
 
-    def access_token(self, grant: CalendarOAuthGrant) -> SecretStr:
+    def access_token(self, grant: CalendarOAuthGrant | CalendarReadOAuthGrant) -> SecretStr:
         """Return a cached access token or refresh it without persisting the short-lived token."""
-        if grant.scopes != (GOOGLE_CALENDAR_APP_SCOPE,):
+        expected = (
+            GOOGLE_CALENDAR_READ_SCOPES
+            if isinstance(grant, CalendarReadOAuthGrant)
+            else (GOOGLE_CALENDAR_APP_SCOPE,)
+        )
+        if grant.scopes != expected:
             message = "Google Calendar OAuth scope is broader than authorized"
             raise CalendarAuthorizationError(message)
         with self._lock:
+            identity = (grant.secret_reference, grant.scopes)
             try:
-                credentials = self._credentials or Credentials(
+                cached = self._credentials if self._credential_grant == identity else None
+                credentials = cached or Credentials(
                     token=None,
                     refresh_token=self._key_provider.connector_secret(grant.secret_reference),
                     token_uri=GOOGLE_TOKEN_URI,
@@ -237,6 +265,7 @@ class GoogleRefreshTokenSource:
                 message = "Google Calendar OAuth refresh returned no access token"
                 raise CalendarAuthorizationError(message)
             self._credentials = credentials
+            self._credential_grant = identity
             return SecretStr(token)
 
 

@@ -9,7 +9,7 @@ from secretary_service.planner_explanation import (
     explain_activity,
     infeasible_explanation,
 )
-from secretary_service.planner_models import DayPlanRequest
+from secretary_service.planner_models import DayPlanRequest, WeekPlanRequest
 from secretary_service.planner_placement import (
     dependent_counts,
     invalid_dependencies,
@@ -38,6 +38,17 @@ class StalePlannerStateError(Exception):
         return (
             f"expected revision {self.expected_revision}, current revision {self.current_revision}"
         )
+
+
+def propose_week(request: WeekPlanRequest) -> ProposedDay:
+    """Plan all 10,080 minutes with shared dependencies, scores and explanations.
+
+    Solve the whole horizon together so a prerequisite on one day constrains
+    its dependent on another. Keep the existing output and payload projection
+    contract, allowing the same proposal/approval executor to consume the week.
+    """
+    validated = WeekPlanRequest.model_validate_json(request.model_dump_json())
+    return propose_day(validated)
 
 
 def propose_day(request: DayPlanRequest) -> ProposedDay:

@@ -175,7 +175,7 @@ def best_placement(
     if bounds is None:
         return None
     lower, upper = bounds
-    candidates: list[Placement] = []
+    best: Placement | None = None
     starts_at = lower
     while starts_at <= upper:
         local_start = starts_at.astimezone(zone)
@@ -185,15 +185,12 @@ def best_placement(
             ends_at=(starts_at + timedelta(minutes=activity.duration_minutes)).astimezone(zone),
             score=score_activity(activity, request, local_start, counts[activity.activity_id]),
         )
-        if all(not overlaps(candidate, existing) for existing in placements):
-            candidates.append(candidate)
+        if all(not overlaps(candidate, existing) for existing in placements) and (
+            best is None or candidate.score.total > best.score.total
+        ):
+            best = candidate
         starts_at += timedelta(minutes=1)
-    if not candidates:
-        return None
-    return min(
-        candidates,
-        key=lambda placement: (-placement.score.total, placement.starts_at.astimezone(UTC)),
-    )
+    return best
 
 
 def placement_bounds(
