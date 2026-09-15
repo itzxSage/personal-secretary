@@ -19,7 +19,9 @@ if TYPE_CHECKING:
 
 CLAIM_DURATION: Final = timedelta(minutes=2)
 
-type JobStatus = Literal["queued", "running", "uncertain", "succeeded", "cancelled", "expired"]
+type JobStatus = Literal[
+    "queued", "running", "uncertain", "needs_reconciliation", "succeeded", "cancelled", "expired"
+]
 
 
 class PendingCalendarOperation(FrozenModel):
@@ -204,7 +206,7 @@ class PostgresOutbox:
         self._save(job.model_copy(update={"status": "cancelled"}), context)
 
     def recover(self, context: TransitionContext) -> int:
-        """Mark timed-out running work uncertain; never put it back in the queue."""
+        """Mark timed-out running work as needing reconciliation; never requeue it."""
         self._require_active()
         _require_aware(context.occurred_at)
         rows = self._connection.execute(
@@ -218,7 +220,7 @@ class PostgresOutbox:
                 and job.claim_deadline is not None
                 and job.claim_deadline <= context.occurred_at
             ):
-                self._save(job.model_copy(update={"status": "uncertain"}), context)
+                self._save(job.model_copy(update={"status": "needs_reconciliation"}), context)
                 recovered += 1
         return recovered
 
@@ -231,8 +233,8 @@ class PostgresOutbox:
     ) -> None:
         """Record a trusted reconciler's provider evidence; never re-execute the job."""
         job = self.read(operation_id)
-        if job is None or job.status != "uncertain":
-            message = "only uncertain jobs can be reconciled"
+        if job is None or job.status not in ("uncertain", "needs_reconciliation"):
+            message = "only uncertain or needs_reconciliation jobs can be reconciled"
             raise ValueError(message)
         self._save(
             job.model_copy(update={"status": status, "result_reference": result_reference}), context

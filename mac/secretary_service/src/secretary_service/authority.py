@@ -414,6 +414,36 @@ class ProposalLifecycle:
         self._consume("reconcile", str(reconciliation.fact_id))
         return ProposalState.RECONCILED
 
+    def reset(
+        self,
+        proposal: ProposalRecord,
+        reset_request: Approval,
+        matrix: ApprovalMatrix,
+    ) -> ProposalState:
+        """Reset an approved proposal to proposed with a device-signed reset proof.
+
+        The reset proof carries the same authority as the original approval and
+        is consumed so a reset can never be replayed. Only an approved proposal
+        may be reset; an applied proposal must be reverted or reconciled first.
+        """
+        if proposal.state != ProposalState.APPROVED:
+            message = f"cannot reset proposal in state {proposal.state.value}"
+            raise PolicyViolationError(message)
+        self.validate_approval(proposal, reset_request, matrix)
+        device_id = reset_request.device_id
+        if device_id is None:
+            message = "reset request requires an enrolled device id"
+            raise PolicyViolationError(message)
+        replay_keys = (
+            ("reset", str(reset_request.fact_id)),
+            ("reset-proposal", str(proposal.proposal_id)),
+            ("reset-idempotency", f"{device_id}:{reset_request.idempotency_key}"),
+        )
+        if not self._consumption.consume(replay_keys):
+            message = "reset replay"
+            raise PolicyViolationError(message)
+        return ProposalState.PROPOSED
+
     def _consume(self, transition: str, fact_id: str) -> None:
         key = (transition, fact_id)
         if not self._consumption.consume((key,)):

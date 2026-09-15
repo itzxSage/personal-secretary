@@ -40,6 +40,26 @@ reconciliation) carrying the proposal's payload hash, an expiry, an idempotency
 key, and a nonempty audit actor. Replays and expired facts fail closed. A
 proposal that never reaches `approved` cannot receive an execution lease.
 
+### Reset: `approved -> proposed`
+
+An approved proposal whose execution was interrupted may be reset back to
+`proposed` so it can be re-approved and re-applied. The reset transition
+requires:
+
+- The proposal is in `approved` state (never `applied`; an applied proposal must
+  be reverted or reconciled first).
+- Reconciliation has confirmed zero provider effects (no events owned by the
+  proposal exist in the calendar).
+- A device-signed `reset_request` proof carrying the same authority as the
+  original approval (same action class, payload hash, expiry, and enrolled
+  device signature).
+- A fresh idempotency key; the reset proof and the original approval markers are
+  consumed so neither the reset nor the approval can be replayed.
+
+After reset the proposal returns to `proposed` and requires a new approval and a
+new execution lease before it can be applied again. The consumed execution lease
+from the interrupted attempt remains consumed and cannot be replayed.
+
 ## Device enrollment and mTLS identity
 
 `DeviceRegistry` enrolls devices by public-key fingerprint and revokes them on
