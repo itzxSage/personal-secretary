@@ -1,12 +1,17 @@
 """Persistent, evidence-aware interview behavior shared by voice and text."""
 
-from datetime import timedelta
+from datetime import time, timedelta
 
 import pytest
 
 from secretary_service.interview_catalog import TOPICS
 from secretary_service.life_interview import InterviewReply, LifeInterview
-from secretary_service.life_knowledge import KnowledgeState, LifeDomain, Sensitivity
+from secretary_service.life_knowledge import (
+    KnowledgeKind,
+    KnowledgeState,
+    LifeDomain,
+    Sensitivity,
+)
 from secretary_service.life_model import LifeModel
 from secretary_service.memory import (
     MemoryProvenance,
@@ -15,6 +20,7 @@ from secretary_service.memory import (
     RetrievalScope,
     StaleMemoryRevisionError,
 )
+from secretary_service.models import ActorId, CorrelationId, TransitionContext
 from secretary_service.storage import EncryptedStateStore
 from tests.goals_memory_helpers import context
 from tests.helpers import FakeClock
@@ -39,6 +45,25 @@ def answer(
     )
 
 
+def skip_to(
+    engine: LifeInterview, reply: InterviewReply, key: str, clock: FakeClock
+) -> InterviewReply:
+    while reply.question is not None and reply.question.key != key:
+        reply = engine.advance(
+            reply.revision, "skip", "", context(clock, "skip"), question_key=reply.question.key
+        )
+    return reply
+
+
+def confirm_routine(
+    engine: LifeInterview, reply: InterviewReply, text: str, clock: FakeClock
+) -> InterviewReply:
+    reply = answer(engine, reply, text, clock)
+    assert reply.question is not None
+    assert reply.question.mode == "confirm"
+    return answer(engine, reply, "yes", clock)
+
+
 def test_answer_saves_immediately_and_resume_does_not_repeat_it(
     store: EncryptedStateStore,
     clock: FakeClock,
@@ -60,7 +85,9 @@ def test_answer_saves_immediately_and_resume_does_not_repeat_it(
     resumed = recreated.advance(paused.revision, "resume", "", context(clock, "resume"))
     assert resumed.question is not None
     assert resumed.question.key == "identity.base"
-    assert not LifeModel(store.memory).planning_knowledge("user", clock.now())
+    reply = skip_to(engine, resumed, "routines.sleep", clock)
+    reply = confirm_routine(engine, reply, "I sleep 10pm-6am daily", clock)
+    assert LifeModel(store.memory).planning_knowledge("user", clock.now())
 
 
 def test_stale_answers_and_wrong_question_are_rejected_without_new_facts(
@@ -131,9 +158,15 @@ def test_sensitive_topics_are_opt_in_and_sweep_keeps_inboxing_until_done(
     reply = answer(engine, reply, "skip", clock)
     assert next(p for p in reply.progress if p.domain is LifeDomain.FINANCES).skipped
     while reply.question is not None and reply.question.key != "open_loops.else":
-        reply = engine.advance(
-            reply.revision, "skip", "", context(clock, "skip"), question_key=reply.question.key
-        )
+        if reply.question.key == "routines.sleep":
+            reply = answer(engine, reply, "I sleep 10pm-6am daily", clock)
+            assert reply.question is not None
+            assert reply.question.mode == "confirm"
+            reply = answer(engine, reply, "yes", clock)
+        else:
+            reply = engine.advance(
+                reply.revision, "skip", "", context(clock, "skip"), question_key=reply.question.key
+            )
     reply = answer(engine, reply, "Return the broken lamp", clock)
     assert reply.question is not None
     assert reply.question.key == "open_loops.else"
@@ -144,14 +177,20 @@ def test_sensitive_topics_are_opt_in_and_sweep_keeps_inboxing_until_done(
     assert reply.question is not None
     assert reply.question.domain is LifeDomain.NOW
     facts = LifeModel(store.memory).knowledge("user", RetrievalScope.PRIVATE, clock.now())
-    assert len(facts) == 2
+    assert len(facts) == 3
+    open_loops = [
+        v
+        for v in facts
+        if v.record.knowledge is not None and v.record.knowledge.open_loop is not None
+    ]
+    assert len(open_loops) == 2
     assert all(
         v.record.knowledge is not None
         and v.record.knowledge.open_loop is not None
         and v.record.knowledge.open_loop.disposition == "inbox"
-        for v in facts
+        for v in open_loops
     )
-    assert not LifeModel(store.memory).planning_knowledge("user", clock.now())
+    assert LifeModel(store.memory).planning_knowledge("user", clock.now())
 
 
 @pytest.mark.parametrize("sensitivity", [Sensitivity.SENSITIVE, Sensitivity.RESTRICTED])
@@ -178,13 +217,15 @@ def test_review_of_private_nonimported_history_preserves_classification(
     assert reply.question is not None
     assert reply.question.mode == "permission"
     reply = answer(engine, reply, "yes", clock)
-    _ = answer(engine, reply, "Current private name", clock)
+    reply = answer(engine, reply, "Current private name", clock)
     facts = LifeModel(store.memory).knowledge("user", RetrievalScope.PRIVATE, clock.now())
     assert len(facts) == 1
     assert facts[0].record.knowledge is not None
     assert facts[0].record.knowledge.sensitivity is sensitivity
     assert facts[0].record.retrieval_scopes == frozenset({RetrievalScope.PRIVATE})
-    assert not LifeModel(store.memory).planning_knowledge("user", clock.now())
+    reply = skip_to(engine, reply, "routines.sleep", clock)
+    reply = confirm_routine(engine, reply, "I sleep 10pm-6am daily", clock)
+    assert LifeModel(store.memory).planning_knowledge("user", clock.now())
 
 
 def test_review_changes_only_the_evidence_shown_to_the_user(
@@ -213,3 +254,168 @@ def test_review_changes_only_the_evidence_shown_to_the_user(
     _ = answer(engine, reply, "Current name", clock)
     records = store.memory.retrieve(RetrievalScope.PRIVATE)
     assert hidden in records
+
+
+def test_confirmed_routine_becomes_planning_knowledge(
+    store: EncryptedStateStore, clock: FakeClock
+) -> None:
+    engine = LifeInterview(store.memory, "user")
+    reply = engine.begin(context(clock, "begin"))
+    reply = skip_to(engine, reply, "routines.sleep", clock)
+    reply = confirm_routine(engine, reply, "I sleep 10pm-6am daily", clock)
+    planning = LifeModel(store.memory).planning_knowledge("user", clock.now())
+    assert len(planning) == 1
+    view = planning[0]
+    assert view.record.knowledge is not None
+    assert view.record.knowledge.key == "routines.sleep"
+    assert view.record.knowledge.planning_allowed
+    assert view.record.confidence == 1.0
+    assert RetrievalScope.PLANNING in view.record.retrieval_scopes
+    routine = view.record.knowledge.routine
+    assert routine is not None
+    assert routine.days == frozenset(range(7))
+    assert routine.start_time == time(22, 0)
+    assert routine.duration_minutes == 60
+
+
+def test_work_schedule_becomes_planning_gap(
+    store: EncryptedStateStore, clock: FakeClock
+) -> None:
+    engine = LifeInterview(store.memory, "user")
+    reply = engine.begin(context(clock, "begin"))
+    reply = skip_to(engine, reply, "work.schedule", clock)
+    reply = answer(engine, reply, "I work 9-5 weekdays", clock)
+    planning = LifeModel(store.memory).planning_knowledge("user", clock.now())
+    assert len(planning) == 1
+    view = planning[0]
+    assert view.record.knowledge is not None
+    assert view.record.knowledge.key == "work.schedule"
+    assert view.record.knowledge.planning_allowed
+    assert view.record.knowledge.kind is KnowledgeKind.FACT
+    assert view.record.knowledge.routine is None
+
+
+def test_unconfirmed_routine_is_not_planning_knowledge(
+    store: EncryptedStateStore, clock: FakeClock
+) -> None:
+    engine = LifeInterview(store.memory, "user")
+    reply = engine.begin(context(clock, "begin"))
+    reply = skip_to(engine, reply, "routines.sleep", clock)
+    reply = answer(engine, reply, "I sleep 10pm-6am daily", clock)
+    assert reply.question is not None
+    assert reply.question.mode == "confirm"
+    assert not LifeModel(store.memory).planning_knowledge("user", clock.now())
+    facts = LifeModel(store.memory).knowledge("user", RetrievalScope.PRIVATE, clock.now())
+    sleep = next(
+        f
+        for f in facts
+        if f.record.knowledge is not None and f.record.knowledge.key == "routines.sleep"
+    )
+    assert not sleep.record.knowledge.planning_allowed
+    assert sleep.record.knowledge.pending_confirmation is not None
+    assert sleep.record.confidence == 0.5
+
+
+def test_skipping_confirmation_keeps_routine_unstructured(
+    store: EncryptedStateStore, clock: FakeClock
+) -> None:
+    engine = LifeInterview(store.memory, "user")
+    reply = engine.begin(context(clock, "begin"))
+    reply = skip_to(engine, reply, "routines.sleep", clock)
+    reply = answer(engine, reply, "I sleep 10pm-6am daily", clock)
+    assert reply.question is not None
+    assert reply.question.mode == "confirm"
+    reply = engine.advance(
+        reply.revision, "skip", "", context(clock, "skip"), question_key=reply.question.key
+    )
+    assert not LifeModel(store.memory).planning_knowledge("user", clock.now())
+    facts = LifeModel(store.memory).knowledge("user", RetrievalScope.PRIVATE, clock.now())
+    sleep = next(
+        f
+        for f in facts
+        if f.record.knowledge is not None and f.record.knowledge.key == "routines.sleep"
+    )
+    assert not sleep.record.knowledge.planning_allowed
+    assert sleep.record.knowledge.pending_confirmation is None
+
+
+def test_correcting_confirmation_reparses_and_reconfirms(
+    store: EncryptedStateStore, clock: FakeClock
+) -> None:
+    engine = LifeInterview(store.memory, "user")
+    reply = engine.begin(context(clock, "begin"))
+    reply = skip_to(engine, reply, "routines.sleep", clock)
+    reply = answer(engine, reply, "I sleep at 10pm daily", clock)
+    assert reply.question is not None
+    assert reply.question.mode == "confirm"
+    assert "10:00 PM" in reply.question.prompt
+    reply = answer(engine, reply, "Actually 11pm", clock)
+    assert reply.question is not None
+    assert reply.question.mode == "confirm"
+    assert "11:00 PM" in reply.question.prompt
+    reply = answer(engine, reply, "yes", clock)
+    planning = LifeModel(store.memory).planning_knowledge("user", clock.now())
+    assert len(planning) == 1
+    routine = planning[0].record.knowledge.routine
+    assert routine is not None
+    assert routine.start_time == time(23, 0)
+
+
+def test_unknown_routine_answer_is_not_planning_knowledge(
+    store: EncryptedStateStore, clock: FakeClock
+) -> None:
+    engine = LifeInterview(store.memory, "user")
+    reply = engine.begin(context(clock, "begin"))
+    reply = skip_to(engine, reply, "routines.sleep", clock)
+    reply = answer(engine, reply, "I don't know", clock)
+    assert not LifeModel(store.memory).planning_knowledge("user", clock.now())
+    facts = LifeModel(store.memory).knowledge("user", RetrievalScope.PRIVATE, clock.now())
+    sleep = next(
+        f
+        for f in facts
+        if f.record.knowledge is not None and f.record.knowledge.key == "routines.sleep"
+    )
+    assert sleep.state is KnowledgeState.UNKNOWN
+    assert not sleep.record.knowledge.planning_allowed
+
+
+def test_routine_timezone_comes_from_context(
+    store: EncryptedStateStore, clock: FakeClock
+) -> None:
+    class LocalContext(TransitionContext):
+        timezone: str = "America/New_York"
+
+    def local_context(correlation_id: str) -> LocalContext:
+        return LocalContext(
+            actor=ActorId("user"),
+            correlation_id=CorrelationId(correlation_id),
+            occurred_at=clock.now(),
+            timezone="America/New_York",
+        )
+
+    engine = LifeInterview(store.memory, "user")
+    reply = engine.begin(context(clock, "begin"))
+    reply = skip_to(engine, reply, "routines.sleep", clock)
+    assert reply.question is not None
+    reply = engine.advance(
+        reply.revision,
+        "answer",
+        "I sleep at 10pm daily",
+        local_context("answer"),
+        question_key=reply.question.key,
+    )
+    assert reply.question is not None
+    assert reply.question.mode == "confirm"
+    assert "America/New_York" in reply.question.prompt
+    reply = engine.advance(
+        reply.revision,
+        "answer",
+        "yes",
+        local_context("confirm"),
+        question_key=reply.question.key,
+    )
+    planning = LifeModel(store.memory).planning_knowledge("user", clock.now())
+    assert len(planning) == 1
+    routine = planning[0].record.knowledge.routine
+    assert routine is not None
+    assert routine.timezone == "America/New_York"

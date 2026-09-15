@@ -219,6 +219,7 @@ class KnowledgeDetails(KnowledgeModel):
     source_evidence: KnowledgeSourceEvidence | None = None
     superseded_by: RecordId | None = None
     routine: RoutineDetails | None = None
+    pending_confirmation: RoutineDetails | None = None
     project: ProjectDetails | None = None
     open_loop: OpenLoopDetails | None = None
 
@@ -245,6 +246,7 @@ class KnowledgeDetails(KnowledgeModel):
             raise ValueError(msg)
         for details, kind in (
             (self.routine, KnowledgeKind.ROUTINE),
+            (self.pending_confirmation, KnowledgeKind.ROUTINE),
             (self.project, KnowledgeKind.PROJECT),
             (self.open_loop, KnowledgeKind.OPEN_LOOP),
         ):
@@ -284,4 +286,5 @@ class InterviewProgress(KnowledgeModel):
     permitted_domains: frozenset[LifeDomain] = frozenset()
     skipped_domains: frozenset[LifeDomain] = frozenset()
     last_question_key: str | None = None
+    pending_confirmation_key: str | None = None
     sweep_complete: bool = False
