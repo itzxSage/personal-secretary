@@ -452,6 +452,62 @@ def test_provider_failure_preserves_approved_state_without_claiming_success(
     assert sandbox.mutation_count == 0
 
 
+def test_transient_apply_exhausts_retries_and_keeps_proposal_approved(
+    store: EncryptedStateStore, clock: FakeClock
+) -> None:
+    # Given
+    seed(store, clock, routine(clock, 1, "Deep work", RoutineFlexibility.PREFERRED))
+    adapter, sandbox = make_adapter(clock)
+    devices = DeviceRegistry(clock)
+    enroll(devices)
+    planner = WeekPlanningService(
+        clock, devices, store, adapter, b"lease-key", timedelta(minutes=10)
+    )
+    preview = planner.preview("user", clock.now(), "UTC")
+    record = persisted(store, preview.proposal_id)
+    sandbox.fail_next_writes(3)
+    # When / Then
+    with pytest.raises(WeekPlanningProviderError, match="calendar_transient"):
+        _ = planner.approve_and_apply(
+            record.record_id, approval(clock, record), context(clock, "apply"), DEVICE_UUID
+        )
+    assert persisted(store, record.record_id).state == "approved"
+    assert sandbox.proposed_events == ()
+    # Same-proposal retry is stale, never silently idempotent.
+    with pytest.raises(WeekPlanProposalError, match="stale_proposal"):
+        _ = planner.approve_and_apply(
+            record.record_id, approval(clock, record), context(clock, "retry"), DEVICE_UUID
+        )
+
+
+def test_interrupted_apply_keeps_proposal_approved_without_claiming_success(
+    store: EncryptedStateStore, clock: FakeClock
+) -> None:
+    # Given
+    seed(store, clock, routine(clock, 1, "Deep work", RoutineFlexibility.PREFERRED))
+    adapter, sandbox = make_adapter(clock)
+    devices = DeviceRegistry(clock)
+    enroll(devices)
+    planner = WeekPlanningService(
+        clock, devices, store, adapter, b"lease-key", timedelta(minutes=10)
+    )
+    preview = planner.preview("user", clock.now(), "UTC")
+    record = persisted(store, preview.proposal_id)
+    sandbox.interrupt_next_write_after_commit()
+    # When / Then
+    with pytest.raises(WeekPlanningProviderError, match="calendar_interrupted"):
+        _ = planner.approve_and_apply(
+            record.record_id, approval(clock, record), context(clock, "apply"), DEVICE_UUID
+        )
+    assert persisted(store, record.record_id).state == "approved"
+    assert len(sandbox.proposed_events) == 1
+    # Same-proposal retry is stale, never silently idempotent.
+    with pytest.raises(WeekPlanProposalError, match="stale_proposal"):
+        _ = planner.approve_and_apply(
+            record.record_id, approval(clock, record), context(clock, "retry"), DEVICE_UUID
+        )
+
+
 def test_persisted_proposal_and_device_survive_restart_for_approval(
     tmp_path: Path, keys: DeterministicTestKeyProvider, clock: FakeClock
 ) -> None:

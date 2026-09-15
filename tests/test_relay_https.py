@@ -25,6 +25,11 @@ from fastapi.testclient import TestClient
 
 from secretary_service.authority import Approval, ApprovalProof, ProposalRecord, ProposalState
 from secretary_service.enrollment import DeviceId, DeviceRegistry
+from secretary_service.google_calendar_contract import LIFEOS_PROPOSED_CALENDAR, RemoteCalendar
+from secretary_service.google_calendar_errors import (
+    CalendarInterruptedError,
+    CalendarTransientError,
+)
 from secretary_service.google_calendar_sandbox import GoogleCalendarSandbox
 from secretary_service.keys import DeterministicTestKeyProvider
 from secretary_service.life_knowledge import RoutineFlexibility
@@ -466,6 +471,86 @@ def test_week_plan_approval_applies_once_via_mtls(planning_relay: RunningRelay) 
     # Replaying the exact approved payload is stale, not silently idempotent.
     assert planning_relay.request("POST", target, envelope)[0] == 409
     assert sandbox.mutation_count == mutation_count
+
+
+def test_week_plan_approval_transient_apply_is_503(planning_relay: RunningRelay) -> None:
+    sandbox = cast("GoogleCalendarSandbox", planning_relay.sandbox)
+    status, body = planning_relay.request("POST", "/v1/week-plan", b"")
+    assert status == 200
+    proposal = parse_wire_week_plan_proposal(body)
+    with EncryptedStateStore.open(
+        planning_relay.path, planning_relay.keys, planning_relay.clock
+    ) as store:
+        approval = approval_for(planning_relay.clock, store, proposal.proposal_id)
+    envelope = WeekPlanApproval(approval=approval).model_dump_json().encode()
+    target = f"/v1/week-plan/{proposal.proposal_id}/approve"
+    sandbox.fail_next_writes(3)
+    status, body = planning_relay.request("POST", target, envelope)
+    assert status == 503
+    assert b"temporarily unavailable" in body
+
+
+def test_week_plan_approval_interrupted_apply_is_502(planning_relay: RunningRelay) -> None:
+    sandbox = cast("GoogleCalendarSandbox", planning_relay.sandbox)
+    status, body = planning_relay.request("POST", "/v1/week-plan", b"")
+    assert status == 200
+    proposal = parse_wire_week_plan_proposal(body)
+    with EncryptedStateStore.open(
+        planning_relay.path, planning_relay.keys, planning_relay.clock
+    ) as store:
+        approval = approval_for(planning_relay.clock, store, proposal.proposal_id)
+    envelope = WeekPlanApproval(approval=approval).model_dump_json().encode()
+    target = f"/v1/week-plan/{proposal.proposal_id}/approve"
+    sandbox.interrupt_next_write_after_commit()
+    status, body = planning_relay.request("POST", target, envelope)
+    assert status == 502
+    assert b"outcome is uncertain" in body
+
+
+def test_week_plan_preview_transient_is_503(
+    planning_relay: RunningRelay, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sandbox = cast("GoogleCalendarSandbox", planning_relay.sandbox)
+    calendar = RemoteCalendar(
+        calendar_id="lifeos-proposed-sandbox",
+        summary=LIFEOS_PROPOSED_CALENDAR,
+        app_owned=True,
+        primary=False,
+    )
+    monkeypatch.setattr(sandbox, "find_calendar", lambda _token, _summary: calendar)
+
+    def failing_sync(token: object, calendar_id: str, sync_token: str | None) -> object:
+        del token, calendar_id, sync_token
+        message = "sandbox transient sync failure"
+        raise CalendarTransientError(message)
+
+    monkeypatch.setattr(sandbox, "sync_events", failing_sync)
+    status, body = planning_relay.request("POST", "/v1/week-plan", b"")
+    assert status == 503
+    assert b"temporarily unavailable" in body
+
+
+def test_week_plan_preview_interrupted_is_502(
+    planning_relay: RunningRelay, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sandbox = cast("GoogleCalendarSandbox", planning_relay.sandbox)
+    calendar = RemoteCalendar(
+        calendar_id="lifeos-proposed-sandbox",
+        summary=LIFEOS_PROPOSED_CALENDAR,
+        app_owned=True,
+        primary=False,
+    )
+    monkeypatch.setattr(sandbox, "find_calendar", lambda _token, _summary: calendar)
+
+    def failing_sync(token: object, calendar_id: str, sync_token: str | None) -> object:
+        del token, calendar_id, sync_token
+        message = "sandbox interrupted sync failure"
+        raise CalendarInterruptedError(message)
+
+    monkeypatch.setattr(sandbox, "sync_events", failing_sync)
+    status, body = planning_relay.request("POST", "/v1/week-plan", b"")
+    assert status == 502
+    assert b"outcome is uncertain" in body
 
 
 def test_week_plan_approval_from_foreign_device_is_403(planning_relay: RunningRelay) -> None:

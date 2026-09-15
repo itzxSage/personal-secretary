@@ -323,8 +323,20 @@ class RelayRoutes:
             raise HTTPException(422, "planning timezone is unavailable") from error
         except (CalendarAuthorizationError, CalendarContractError) as error:
             raise HTTPException(502, "calendar provider is unavailable") from error
+        except WeekPlanningProviderError as error:
+            if error.reason == "calendar_transient":
+                raise HTTPException(
+                    503,
+                    "calendar provider is temporarily unavailable; "
+                    "create a fresh preview and try again",
+                ) from error
+            raise HTTPException(
+                502,
+                "calendar preview outcome is uncertain; "
+                "check the LifeOS Proposed calendar before creating a fresh preview",
+            ) from error
 
-    async def approve_week_plan(
+    async def approve_week_plan(  # noqa: C901 - flat reason-to-status mapping
         self, proposal_id: UUID, request: Request
     ) -> WeekPlanExecutionResult:
         """Apply the exact device-approved payload under an internal execution lease."""
@@ -352,6 +364,18 @@ class RelayRoutes:
             if error.reason == "calendar_contract":
                 raise HTTPException(
                     409, "calendar contract was rejected; resync before retrying"
+                ) from error
+            if error.reason == "calendar_transient":
+                raise HTTPException(
+                    503,
+                    "calendar provider is temporarily unavailable; "
+                    "create a fresh preview and try again",
+                ) from error
+            if error.reason == "calendar_interrupted":
+                raise HTTPException(
+                    502,
+                    "calendar apply outcome is uncertain; "
+                    "check the LifeOS Proposed calendar before creating a fresh preview",
                 ) from error
             raise HTTPException(502, "calendar provider failed to apply the plan") from error
 

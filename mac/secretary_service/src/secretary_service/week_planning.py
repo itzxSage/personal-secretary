@@ -38,6 +38,8 @@ from secretary_service.google_calendar_contract import (
 from secretary_service.google_calendar_errors import (
     CalendarAuthorizationError,
     CalendarContractError,
+    CalendarInterruptedError,
+    CalendarTransientError,
 )
 from secretary_service.leases import LeaseIssuer, LeaseRequest, LeaseViolationError, SigningKeyRing
 from secretary_service.life_knowledge import RoutineDetails, RoutineFlexibility
@@ -73,6 +75,8 @@ APPROVAL_REJECTED: Final = "approval_rejected"
 LEASE_REJECTED: Final = "lease_rejected"
 CALENDAR_AUTHORIZATION: Final = "calendar_authorization"
 CALENDAR_CONTRACT: Final = "calendar_contract"
+CALENDAR_TRANSIENT: Final = "calendar_transient"
+CALENDAR_INTERRUPTED: Final = "calendar_interrupted"
 
 
 class BoundaryModel(FrozenModel):
@@ -155,9 +159,14 @@ class WeekPlanningPolicyError(WeekPlanningError):
 
 @dataclass(frozen=True, slots=True)
 class WeekPlanningProviderError(WeekPlanningError):
-    """Calendar authorization or contract execution failed."""
+    """Calendar authorization, contract, transient, or interrupted execution failed."""
 
-    reason: Literal["calendar_authorization", "calendar_contract"]
+    reason: Literal[
+        "calendar_authorization",
+        "calendar_contract",
+        "calendar_transient",
+        "calendar_interrupted",
+    ]
 
     @override
     def __str__(self) -> str:
@@ -246,7 +255,14 @@ class WeekPlanningService:
             ),
             TransitionContext(actor=ACTOR, correlation_id=CORRELATION, occurred_at=now),
         )
-        dry_run = self._calendar.dry_run(CalendarPlan(authorization=authorization, events=events))
+        try:
+            dry_run = self._calendar.dry_run(
+                CalendarPlan(authorization=authorization, events=events)
+            )
+        except CalendarTransientError as error:
+            raise WeekPlanningProviderError(CALENDAR_TRANSIENT) from error
+        except CalendarInterruptedError as error:
+            raise WeekPlanningProviderError(CALENDAR_INTERRUPTED) from error
         return WeekPlanProposal(
             proposal_id=proposal_id,
             payload_hash=authorization.payload_hash(),
@@ -263,7 +279,7 @@ class WeekPlanningService:
             calendar_dry_run=dry_run,
         )
 
-    def approve_and_apply(
+    def approve_and_apply(  # noqa: C901 - sequential governed error mapping
         self,
         proposal_id: RecordId,
         approval: Approval,
@@ -314,6 +330,10 @@ class WeekPlanningService:
             raise WeekPlanningProviderError(CALENDAR_AUTHORIZATION) from error
         except CalendarContractError as error:
             raise WeekPlanningProviderError(CALENDAR_CONTRACT) from error
+        except CalendarTransientError as error:
+            raise WeekPlanningProviderError(CALENDAR_TRANSIENT) from error
+        except CalendarInterruptedError as error:
+            raise WeekPlanningProviderError(CALENDAR_INTERRUPTED) from error
         applied_state = self._lifecycle.apply(approved, lease)
         self._store.transition(RecordKind.PROPOSAL, proposal_id, applied_state.value, context)
         return WeekPlanExecutionResult(
