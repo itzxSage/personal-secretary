@@ -327,13 +327,11 @@ class RelayRoutes:
             if error.reason == "calendar_transient":
                 raise HTTPException(
                     503,
-                    "calendar provider is temporarily unavailable; "
-                    "create a fresh preview and try again",
+                    "calendar temporarily unavailable; check LifeOS calendar before retrying",
                 ) from error
             raise HTTPException(
                 502,
-                "calendar preview outcome is uncertain; "
-                "check the LifeOS Proposed calendar before creating a fresh preview",
+                "calendar preview outcome is uncertain; retry preview later",
             ) from error
 
     async def approve_week_plan(  # noqa: C901 - flat reason-to-status mapping
@@ -368,14 +366,12 @@ class RelayRoutes:
             if error.reason == "calendar_transient":
                 raise HTTPException(
                     503,
-                    "calendar provider is temporarily unavailable; "
-                    "create a fresh preview and try again",
+                    "calendar temporarily unavailable; check LifeOS calendar before retrying",
                 ) from error
             if error.reason == "calendar_interrupted":
                 raise HTTPException(
                     502,
-                    "calendar apply outcome is uncertain; "
-                    "check the LifeOS Proposed calendar before creating a fresh preview",
+                    "calendar apply outcome is uncertain; check LifeOS calendar before retrying",
                 ) from error
             raise HTTPException(502, "calendar provider failed to apply the plan") from error
 
@@ -410,5 +406,7 @@ def create_relay_app(
     app.add_api_route("/v1/knowledge", routes.knowledge, methods=["GET"])
     app.add_api_route("/v1/knowledge/{memory_id}", routes.correct_knowledge, methods=["POST"])
     app.add_api_route("/v1/week-plan", routes.preview_week_plan, methods=["POST"])
-    app.add_api_route("/v1/week-plan/{proposal_id}/approve", routes.approve_week_plan, methods=["POST"])
+    app.add_api_route(
+        "/v1/week-plan/{proposal_id}/approve", routes.approve_week_plan, methods=["POST"]
+    )
     return app

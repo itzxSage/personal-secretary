@@ -306,7 +306,7 @@ class LifeInterview:
                     )
                     + " "
                     + topic.prompt,
-                    evidence_ids=tuple(v.record.memory_id for v in relevant),
+                    evidence_ids=tuple(v.record.memory_id for v in relevant[:3]),
                 )
             return InterviewQuestion(key=topic.key, domain=topic.domain, prompt=topic.prompt)
         return None
@@ -339,6 +339,21 @@ class LifeInterview:
         scopes = frozenset({RetrievalScope.PRIVATE, RetrievalScope.CONVERSATION})
         if question.evidence_ids:
             existing = {r.memory_id: r for r in self.memory.retrieve(RetrievalScope.PRIVATE)}
+            # Reviewing a non-imported private assertion must not widen its
+            # retrieval scope or lower its classification either.
+            classifications = {
+                source.sensitivity
+                for evidence_id in question.evidence_ids
+                if (source := existing[evidence_id].knowledge) is not None
+            }
+            if classifications & {Sensitivity.RESTRICTED, Sensitivity.SENSITIVE}:
+                sensitivity = (
+                    Sensitivity.RESTRICTED
+                    if Sensitivity.RESTRICTED in classifications
+                    else Sensitivity.SENSITIVE
+                )
+                details = details.model_copy(update={"sensitivity": sensitivity})
+                scopes = frozenset({RetrievalScope.PRIVATE})
             if any(
                 (source_details := existing[e].knowledge) is not None
                 and source_details.source_evidence is not None

@@ -282,3 +282,19 @@ def test_no_worker_is_the_default() -> None:
     assert result.status == WorkerResultStatus.UNAVAILABLE
     assert result.attempts == 0
     assert result.provenance.runtime.name == "none"
+
+
+def test_live_coding_runtime_cannot_inherit_sandbox_execution_permission(clock: FakeClock) -> None:
+    runtime = FakeRuntime([WorkerAttemptResult.succeeded("artifact:unexpected")])
+    runtime.descriptor = runtime.descriptor.model_copy(
+        update={"execution_class": WorkerRuntimeClass.LIVE}
+    )
+    broker = FakeCredentialBroker(clock)
+    commander = Commander(runtime=runtime, credential_broker=broker)
+
+    result = commander.dispatch(make_request(WorkerCapability.CODE))
+
+    assert result.status is WorkerResultStatus.DENIED
+    assert result.detail == "live_code_execution_disabled"
+    assert runtime.requests == []
+    assert broker.requests == []

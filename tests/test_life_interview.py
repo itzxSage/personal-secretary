@@ -6,10 +6,11 @@ import pytest
 
 from secretary_service.interview_catalog import TOPICS
 from secretary_service.life_interview import InterviewReply, LifeInterview
-from secretary_service.life_knowledge import KnowledgeState, LifeDomain
+from secretary_service.life_knowledge import KnowledgeState, LifeDomain, Sensitivity
 from secretary_service.life_model import LifeModel
 from secretary_service.memory import (
     MemoryProvenance,
+    MemoryRecord,
     MemorySource,
     RetrievalScope,
     StaleMemoryRevisionError,
@@ -151,3 +152,64 @@ def test_sensitive_topics_are_opt_in_and_sweep_keeps_inboxing_until_done(
         for v in facts
     )
     assert not LifeModel(store.memory).planning_knowledge("user", clock.now())
+
+
+@pytest.mark.parametrize("sensitivity", [Sensitivity.SENSITIVE, Sensitivity.RESTRICTED])
+def test_review_of_private_nonimported_history_preserves_classification(
+    store: EncryptedStateStore, clock: FakeClock, sensitivity: Sensitivity
+) -> None:
+    base = assertion(clock)
+    assert base.knowledge is not None
+    old = base.model_copy(
+        update={
+            "retrieval_scopes": frozenset({RetrievalScope.PRIVATE}),
+            "knowledge": base.knowledge.model_copy(
+                update={
+                    "key": "identity.name",
+                    "state": KnowledgeState.STALE,
+                    "sensitivity": sensitivity,
+                }
+            ),
+        }
+    )
+    store.memory.remember(old, context(clock, "private-history"))
+    engine = LifeInterview(store.memory, "user")
+    reply = engine.begin(context(clock, "begin"))
+    assert reply.question is not None
+    assert reply.question.mode == "permission"
+    reply = answer(engine, reply, "yes", clock)
+    _ = answer(engine, reply, "Current private name", clock)
+    facts = LifeModel(store.memory).knowledge("user", RetrievalScope.PRIVATE, clock.now())
+    assert len(facts) == 1
+    assert facts[0].record.knowledge is not None
+    assert facts[0].record.knowledge.sensitivity is sensitivity
+    assert facts[0].record.retrieval_scopes == frozenset({RetrievalScope.PRIVATE})
+    assert not LifeModel(store.memory).planning_knowledge("user", clock.now())
+
+
+def test_review_changes_only_the_evidence_shown_to_the_user(
+    store: EncryptedStateStore, clock: FakeClock
+) -> None:
+    originals: list[MemoryRecord] = []
+    for index in range(1, 5):
+        base = assertion(clock, index)
+        assert base.knowledge is not None
+        old = base.model_copy(
+            update={
+                "content": f"Historical name {index}",
+                "knowledge": base.knowledge.model_copy(
+                    update={"key": "identity.name", "state": KnowledgeState.STALE}
+                ),
+            }
+        )
+        store.memory.remember(old, context(clock, f"history-{index}"))
+        originals.append(old)
+    engine = LifeInterview(store.memory, "user")
+    reply = engine.begin(context(clock, "begin"))
+    assert reply.question is not None
+    assert len(reply.question.evidence_ids) == 3
+    hidden = next(old for old in originals if old.memory_id not in reply.question.evidence_ids)
+    assert hidden.content not in reply.question.prompt
+    _ = answer(engine, reply, "Current name", clock)
+    records = store.memory.retrieve(RetrievalScope.PRIVATE)
+    assert hidden in records

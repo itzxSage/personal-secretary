@@ -134,13 +134,7 @@ def correct_knowledge(
                 else scopes - {RetrievalScope.PLANNING}
             )
         elif command.action in {"no_longer_true", "temporary"}:
-            until = (
-                context.occurred_at if command.action == "no_longer_true" else command.valid_until
-            )
-            if until is None:
-                message = "temporary knowledge requires an end time"
-                raise ValueError(message)
-            updates["valid_until"] = until
+            updates["valid_until"] = _valid_until(command, context.occurred_at)
         replacement = KnowledgeDetails.model_validate(details.model_dump() | updates)
         _ = model.memory.correct(
             memory_id,
@@ -159,3 +153,11 @@ def correct_knowledge(
             ),
             context,
         )
+
+
+def _valid_until(command: KnowledgeCommand, now: datetime) -> datetime:
+    until = now if command.action == "no_longer_true" else command.valid_until
+    if until is None:
+        message = "temporary knowledge requires an end time"
+        raise ValueError(message)
+    return until

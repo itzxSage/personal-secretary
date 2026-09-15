@@ -123,10 +123,10 @@ class PostgresConversations:
         device = self.device(device_id)
         if device is None:
             raise RelayAccessError
+        deletion_query = "SELECT conversation_id::text FROM lifeos_conversation_deletions WHERE conversation_id=%s"  # noqa: E501 - static SQL
         with self._connection.transaction():
             deleted = self._connection.execute(
-                "SELECT conversation_id::text FROM lifeos_conversation_deletions "
-                "WHERE conversation_id=%s",
+                deletion_query,
                 (conversation_id,),
             ).fetchone()
             if deleted is not None:

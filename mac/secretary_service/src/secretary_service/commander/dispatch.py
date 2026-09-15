@@ -96,11 +96,19 @@ class Commander:
                         )
         raise AssertionError(request.request_id)
 
-    def _authorization_denial(
+    def _authorization_denial(  # noqa: PLR0911 - ordered fail-closed boundary checks
         self,
         request: WorkerRequest,
         authorization: DispatchAuthorization | None,
     ) -> str | None:
+        # A configured live coding runtime has host effects just like computer
+        # control. Sandbox test runtimes do not establish permission to launch it.
+        if (
+            request.capability is WorkerCapability.CODE
+            and self._runtime is not None
+            and self._runtime.descriptor.execution_class is WorkerRuntimeClass.LIVE
+        ):
+            return "live_code_execution_disabled"
         if request.capability not in PROTECTED_CAPABILITIES:
             return None
         live_control = request.capability in {

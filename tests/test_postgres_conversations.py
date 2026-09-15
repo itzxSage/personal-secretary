@@ -125,7 +125,7 @@ def test_duplicate_id_with_changed_content_is_rejected(
 
 @pytest.mark.parametrize("expired", [False, True])
 def test_delete_or_retention_purges_ciphertext_and_blocks_recreation(
-    pg_case: PostgresCase, clock: FakeClock, expired: bool
+    pg_case: PostgresCase, clock: FakeClock, *, expired: bool
 ) -> None:
     prepare(pg_case, clock)
     with pg_case.open() as store, store.execution_transaction() as unit:

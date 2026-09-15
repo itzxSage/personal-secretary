@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from http.client import HTTPSConnection
 from pathlib import Path
-from typing import Literal, cast
+from typing import TYPE_CHECKING, Literal, cast
 from uuid import uuid4
 
 import pytest
@@ -30,7 +30,6 @@ from secretary_service.google_calendar_errors import (
     CalendarInterruptedError,
     CalendarTransientError,
 )
-from secretary_service.google_calendar_sandbox import GoogleCalendarSandbox
 from secretary_service.keys import DeterministicTestKeyProvider
 from secretary_service.life_knowledge import RoutineFlexibility
 from secretary_service.memory import MemoryRecord
@@ -63,15 +62,25 @@ from tests.test_conversation_relay import (
 from tests.test_google_calendar import make_adapter
 from tests.test_week_planning import routine, seed
 
+if TYPE_CHECKING:
+    from pydantic import JsonValue
+
+    from secretary_service.google_calendar_sandbox import GoogleCalendarSandbox
+
+DEFAULT_DEVICE_ID = DeviceId(str(DEVICE))
+
 
 # FastAPI serializes computed fields (e.g. PlanBlock.duration_minutes) into the
 # wire payload, which the canonical model forbids on input. Clients must tolerate
 # unknown keys (like the Swift decoder does), so mirror that behavior here.
 def parse_wire_week_plan_proposal(body: bytes) -> WeekPlanProposal:
     """Parse a wire proposal the way a client must: tolerant of computed fields."""
-    payload = json.loads(body)
-    for block in payload.get("blocks", ()):
-        block.pop("duration_minutes", None)
+    payload = cast("dict[str, JsonValue]", json.loads(body))
+    blocks = payload.get("blocks", [])
+    assert isinstance(blocks, list)
+    for block in blocks:
+        assert isinstance(block, dict)
+        _ = block.pop("duration_minutes", None)
     return WeekPlanProposal.model_validate(payload)
 
 
@@ -210,7 +219,7 @@ class RunningRelay:
 
 
 @contextmanager
-def serving(
+def serving(  # noqa: PLR0913, PLR0917 - loopback server dependencies
     app: FastAPI,
     tls: TLSMaterial,
     clock: FakeClock,
@@ -309,7 +318,7 @@ def approval_for(
     clock: FakeClock,
     store: EncryptedStateStore,
     proposal_id: RecordId,
-    device_id: DeviceId = DeviceId(str(DEVICE)),
+    device_id: DeviceId = DEFAULT_DEVICE_ID,
 ) -> Approval:
     """Device-signed approval matching the persisted proposal payload."""
     record = store.read(RecordKind.PROPOSAL, proposal_id)
@@ -517,7 +526,11 @@ def test_week_plan_preview_transient_is_503(
         app_owned=True,
         primary=False,
     )
-    monkeypatch.setattr(sandbox, "find_calendar", lambda _token, _summary: calendar)
+
+    def find_calendar(_token: object, _summary: str) -> RemoteCalendar:
+        return calendar
+
+    monkeypatch.setattr(sandbox, "find_calendar", find_calendar)
 
     def failing_sync(token: object, calendar_id: str, sync_token: str | None) -> object:
         del token, calendar_id, sync_token
@@ -540,7 +553,11 @@ def test_week_plan_preview_interrupted_is_502(
         app_owned=True,
         primary=False,
     )
-    monkeypatch.setattr(sandbox, "find_calendar", lambda _token, _summary: calendar)
+
+    def find_calendar(_token: object, _summary: str) -> RemoteCalendar:
+        return calendar
+
+    monkeypatch.setattr(sandbox, "find_calendar", find_calendar)
 
     def failing_sync(token: object, calendar_id: str, sync_token: str | None) -> object:
         del token, calendar_id, sync_token

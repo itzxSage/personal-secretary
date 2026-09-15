@@ -6,10 +6,10 @@ verifiable user provenance remain explicit source claims, pending reconciliation
 
 import hashlib
 import json
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Hashable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
-from typing import Literal, NoReturn, cast
+from typing import Literal, NoReturn, cast, override
 from uuid import NAMESPACE_URL, uuid5
 
 import yaml
@@ -98,7 +98,10 @@ def _instant(value: JsonValue, fallback: datetime) -> datetime:
         _reject("invalid source timestamp")
     # Represent coarse dates by their lower boundary, with precision retained below.
     value += {4: "-01-01", 7: "-01"}.get(len(value), "")
-    result = datetime.fromisoformat(value)
+    try:
+        result = datetime.fromisoformat(value)
+    except ValueError:
+        _reject("invalid source timestamp")
     return result.replace(tzinfo=UTC) if result.tzinfo is None else result
 
 
@@ -283,13 +286,21 @@ def _json_default(value: object) -> str:
 class _StrictSafeLoader(yaml.SafeLoader):
     """SafeLoader subclass that rejects duplicate keys in YAML mappings."""
 
-    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict:
-        mapping = {}
-        for key_node, value_node in node.value:
-            key = self.construct_object(key_node, deep=deep)
+    @override
+    def construct_mapping(
+        self, node: yaml.MappingNode, deep: bool = False
+    ) -> dict[Hashable, object]:
+        # PyYAML exposes untyped node values; narrow them once at this boundary.
+        nodes = cast("list[tuple[yaml.Node, yaml.Node]]", node.value)
+        construct = cast("Callable[..., object]", self.construct_object)
+        mapping: dict[Hashable, object] = {}
+        for key_node, value_node in nodes:
+            key = construct(key_node, deep=deep)
+            if not isinstance(key, (str, int, float, bool, type(None))):
+                _reject("unsupported YAML mapping key")
             if key in mapping:
-                _reject(f"duplicate YAML key: {key!r}")
-            mapping[key] = self.construct_object(value_node, deep=deep)
+                _reject("duplicate YAML key")
+            mapping[key] = construct(value_node, deep=deep)
         return mapping
 
 
@@ -302,7 +313,7 @@ def _parse_document(raw: bytes) -> dict[str, JsonValue]:
         isinstance(token, (yaml.tokens.AliasToken, yaml.tokens.AnchorToken)) for token in scan(raw)
     ):
         _reject("YAML aliases are not supported")
-    parsed = cast("object", yaml.load(raw, Loader=_StrictSafeLoader))
+    parsed = cast("object", yaml.load(raw, Loader=_StrictSafeLoader))  # noqa: S506 - SafeLoader subclass
     # Normalize YAML dates to ISO strings before strict domain validation.
     document = cast(
         "JsonValue",

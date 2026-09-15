@@ -224,10 +224,20 @@ def test_sensitive_history_requires_permission_before_disclosure(
     assert "Example Workshop" in reply.question.prompt
 
 
+def test_bad_timestamp_is_rejected_without_echoing_source_content(
+    store: EncryptedStateStore, clock: FakeClock
+) -> None:
+    raw = source().replace(b"2024-07", b"private-invalid-time")
+    with pytest.raises(ValueError, match="invalid source timestamp") as caught:
+        _ = ingest(store, clock, raw)
+    assert "private-invalid-time" not in str(caught.value)
+    assert store.memory.retrieve(RetrievalScope.PRIVATE) == ()
+
+
 @pytest.mark.parametrize(
     "raw",
     [
-        b'career:\n  current_employment:\n    last_known:\n      employer: "Good Corp"\n      employer: "Evil Corp"',
+        b'career:\n  last_known:\n    employer: "Good Corp"\n    employer: "Evil Corp"',
         b'subject:\n  identity:\n    preferred_name:\n      value: "Alice"\n      value: "Bob"',
     ],
 )
