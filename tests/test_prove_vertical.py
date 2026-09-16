@@ -16,8 +16,8 @@ from datetime import timedelta
 
 from secretary_service.authority import ProposalState
 from secretary_service.enrollment import DeviceRegistry
-from secretary_service.life_knowledge import KnowledgeKind
-from secretary_service.life_model import LifeModel
+from secretary_service.life_knowledge import KnowledgeDetails, KnowledgeKind
+from secretary_service.life_model import KnowledgeView, LifeModel
 from secretary_service.planner_results import PlanStatus
 from secretary_service.storage import EncryptedStateStore
 from secretary_service.week_planning import WeekPlanningService
@@ -38,12 +38,8 @@ def test_full_software_vertical(  # noqa: PLR0915 - one end-to-end vertical trac
     # through 5+ topics with realistic free-text answers including routines.
     trace.append("1. LifeInterview.begin(objective='week_planning')")
     trace.append("   → first question: work.role (FACT, mode=ask)")
-    trace.append(
-        "2. LifeInterview.advance(answer) x 8 topics: work.role, work.schedule,"
-    )
-    trace.append(
-        "   planning.fixed_commitments, permission.values, values.commitments,"
-    )
+    trace.append("2. LifeInterview.advance(answer) x 8 topics: work.role, work.schedule,")
+    trace.append("   planning.fixed_commitments, permission.values, values.commitments,")
     trace.append("   routines.sleep, routines.exercise, routines.meals")
     reply = run_week_planning_interview(store, clock)
     trace.append(f"   → interview complete (phase={reply.phase})")
@@ -58,19 +54,27 @@ def test_full_software_vertical(  # noqa: PLR0915 - one end-to-end vertical trac
     # and commitment topics present.
     planning = LifeModel(store.memory).planning_knowledge("user", clock.now())
     assert planning
-    by_key = {view.record.knowledge.key: view for view in planning}
+    by_key: dict[str, KnowledgeView] = {}
+    details_by_key: dict[str, KnowledgeDetails] = {}
+    for view in planning:
+        details = view.record.knowledge
+        assert details is not None
+        by_key[details.key] = view
+        details_by_key[details.key] = details
     trace.append(f"4. LifeModel.planning_knowledge('user', now) → {len(planning)} views")
-    trace.extend(
-        f"   - {key}: {by_key[key].record.knowledge.kind.value}" for key in sorted(by_key)
-    )
+    trace.extend(f"   - {key}: {details_by_key[key].kind.value}" for key in sorted(by_key))
     for key in ("routines.sleep", "routines.exercise", "routines.meals"):
         view = by_key[key]
-        assert view.record.knowledge.kind is KnowledgeKind.ROUTINE
-        assert view.record.knowledge.routine is not None
+        details = view.record.knowledge
+        assert details is not None
+        assert details.kind is KnowledgeKind.ROUTINE
+        assert details.routine is not None
     for key in ("work.schedule", "planning.fixed_commitments"):
         view = by_key[key]
-        assert view.record.knowledge.planning_allowed
-        assert view.record.knowledge.routine is None
+        details = view.record.knowledge
+        assert details is not None
+        assert details.planning_allowed
+        assert details.routine is None
 
     # (d) WeekPlanningService.preview(): verify the proposal has actual
     # scheduled blocks, not just gap fill.
@@ -84,19 +88,30 @@ def test_full_software_vertical(  # noqa: PLR0915 - one end-to-end vertical trac
     assert preview.blocks
     scheduled = [block for block in preview.blocks if block.activity_id is not None]
     assert scheduled
-    assert all(block.activity_id.startswith("routine:") for block in scheduled)
+    assert all(
+        block.activity_id is not None and block.activity_id.startswith("routine:")
+        for block in scheduled
+    )
     trace.append("5. WeekPlanningService.preview('user', now, 'UTC')")
     trace.append(
-        f"   → status={preview.status.value}, {len(preview.blocks)} blocks, "
-        f"{len(scheduled)} scheduled, {len(preview.gaps)} gaps"
+        "".join(
+            (
+                f"   → status={preview.status.value}, {len(preview.blocks)} blocks, ",
+                f"{len(scheduled)} scheduled, {len(preview.gaps)} gaps",
+            )
+        )
     )
 
     # (f) Calendar: dry_run returns events and performs zero provider writes.
     assert preview.calendar_dry_run.operations
     assert sandbox.mutation_count == 0
     trace.append(
-        f"6. GoogleCalendarAdapter.dry_run → {len(preview.calendar_dry_run.operations)} "
-        "operations (mutation-free)"
+        "".join(
+            (
+                f"6. GoogleCalendarAdapter.dry_run → {len(preview.calendar_dry_run.operations)} ",
+                "operations (mutation-free)",
+            )
+        )
     )
 
     # (e) approve_and_apply(): verify the lifecycle transitions
@@ -120,8 +135,12 @@ def test_full_software_vertical(  # noqa: PLR0915 - one end-to-end vertical trac
     trace.append("8. WeekPlanningService.approve_and_apply(proposal_id, device-signed approval)")
     trace.append("   → PROPOSED → APPROVED → APPLIED")
     trace.append(
-        f"   → result.state={result.state.value}, applied_operations="
-        f"{result.applied_operations}, lease_id={result.lease_id}"
+        "".join(
+            (
+                f"   → result.state={result.state.value}, applied_operations=",
+                f"{result.applied_operations}, lease_id={result.lease_id}",
+            )
+        )
     )
 
     # (f) Calendar: verify the events appear in the calendar. The live Google
@@ -129,8 +148,12 @@ def test_full_software_vertical(  # noqa: PLR0915 - one end-to-end vertical trac
     # hermetic sandbox is the calendar and now holds the applied events.
     assert len(sandbox.proposed_events) >= 1
     trace.append(
-        f"9. Calendar events appear: {len(sandbox.proposed_events)} event(s) in "
-        "the LifeOS Proposed calendar"
+        "".join(
+            (
+                f"9. Calendar events appear: {len(sandbox.proposed_events)} event(s) in ",
+                "the LifeOS Proposed calendar",
+            )
+        )
     )
 
     # (g) Print the full call chain from interview → confirmation →

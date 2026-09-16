@@ -12,7 +12,13 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from pydantic import TypeAdapter, ValidationError
 
-from secretary_service.authority import Approval, ApprovalProof, ProposalRecord, ProposalState
+from secretary_service.authority import (
+    Approval,
+    ApprovalProof,
+    ProposalRecord,
+    ProposalState,
+    ResetRequest,
+)
 from secretary_service.enrollment import DeviceId, DeviceRegistry
 from secretary_service.google_calendar import CalendarPlan
 from secretary_service.google_calendar_contract import CalendarEventDraft, calendar_payload
@@ -557,3 +563,58 @@ def test_boundary_models_are_frozen_and_forbid_extra_fields(clock: FakeClock) ->
     # When / Then
     with pytest.raises(ValidationError):
         _ = WeekPlanApproval.model_validate({"approval": proof.approval, "extra": True})
+
+
+@pytest.mark.parametrize("interrupt_again", [False, True])
+def test_partial_execution_resumes_original_payload_with_fresh_device_proof(
+    store: EncryptedStateStore,
+    clock: FakeClock,
+    *,
+    interrupt_again: bool,
+) -> None:
+    seed(
+        store,
+        clock,
+        routine(clock, 1, "Deep work", RoutineFlexibility.PREFERRED),
+        routine(clock, 2, "Exercise", RoutineFlexibility.PREFERRED),
+    )
+    adapter, sandbox = make_adapter(clock)
+    devices = DeviceRegistry(clock, store.devices)
+    enroll(devices)
+    planner = WeekPlanningService(
+        clock, devices, store, adapter, b"lease-key", timedelta(minutes=10)
+    )
+    preview = planner.preview("user", clock.now(), "UTC")
+    record = persisted(store, preview.proposal_id)
+    sandbox.interrupt_next_write_after_commit()
+    with pytest.raises(WeekPlanningProviderError, match="calendar_interrupted"):
+        _ = planner.approve_and_apply(
+            record.record_id, approval(clock, record), context(clock, "apply"), DEVICE_UUID
+        )
+    first_id = sandbox.proposed_events[0].event_id
+    proof = ResetRequest.model_validate(approval(clock, record).model_dump()).model_copy(
+        update={"fact_id": record_id(901), "idempotency_key": "recover-1"}
+    )
+    proof = proof.model_copy(
+        update={"signature": PRIVATE_KEY.sign(proof.signing_bytes("calendar.apply")).hex()}
+    )
+    if interrupt_again:
+        sandbox.interrupt_next_write_after_commit()
+        with pytest.raises(WeekPlanningProviderError, match="calendar_interrupted"):
+            _ = planner.recover_interrupted_apply(
+                record.record_id, proof, context(clock, "recover"), DEVICE_UUID
+            )
+        assert persisted(store, record.record_id).state == "approved"
+        # All events now exist despite the second lost response: read-only reconciliation
+        # completes the state without another mutation or resetting authority.
+    outcome = planner.recover_interrupted_apply(
+        record.record_id, proof, context(clock, "recover"), DEVICE_UUID
+    )
+    assert outcome.outcome == "applied"
+    assert persisted(store, record.record_id).state == "applied"
+    assert len(sandbox.proposed_events) == 2
+    assert first_id in {event.event_id for event in sandbox.proposed_events}
+    assert (
+        next(event for event in sandbox.proposed_events if event.event_id == first_id).revision
+        == "1"
+    )

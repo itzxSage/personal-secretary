@@ -12,20 +12,18 @@ from secretary_service.authority import (
     ProposalLifecycle,
     ProposalRecord,
     ProposalState,
-    Rollback,
+    ResetRequest,
     default_approval_matrix,
 )
 from secretary_service.durable_calendar import recover_interrupted_apply
 from secretary_service.enrollment import DeviceRegistry
-from secretary_service.fixture_authority import FIXTURE_PUBLIC_KEY
+from secretary_service.fixture_authority import FIXTURE_PRIVATE_KEY, FIXTURE_PUBLIC_KEY
 from secretary_service.google_calendar import (
     CalendarEventDraft,
     CalendarOperation,
     CalendarPlan,
-    GoogleCalendarAdapter,
     calendar_payload,
 )
-from secretary_service.google_calendar_sandbox import GoogleCalendarSandbox
 from secretary_service.models import Proposal, RecordId, RecordKind, TransitionContext
 from secretary_service.storage import EncryptedStateStore
 from tests.helpers import FakeClock
@@ -37,6 +35,15 @@ from tests.test_authority import (
     make_lease,
 )
 from tests.test_google_calendar import make_adapter
+
+
+def make_reset(clock: FakeClock, proposal: ProposalRecord, *, idempotency_key: str) -> ResetRequest:
+    proof = ResetRequest.model_validate(
+        make_approval(clock, proposal, idempotency_key=idempotency_key).model_dump()
+    )
+    return proof.model_copy(
+        update={"signature": FIXTURE_PRIVATE_KEY.sign(proof.signing_bytes("calendar.apply")).hex()}
+    )
 
 
 def make_events(clock: FakeClock, count: int) -> tuple[CalendarEventDraft, ...]:
@@ -106,7 +113,14 @@ def test_interrupted_write_resets_then_reapproval_creates_no_duplicates(
     proposal = seed_approved_proposal(store, clock, events)
     adapter, sandbox = make_adapter(clock)
     devices = enroll_device(store, clock)
-    reset_request = make_approval(clock, proposal, idempotency_key="reset-1")
+    original = make_approval(clock, proposal, idempotency_key="original")
+    lifecycle = ProposalLifecycle(clock, devices, store.authority_consumption)
+    _ = lifecycle.approve(
+        proposal.model_copy(update={"state": ProposalState.PROPOSED}),
+        original,
+        default_approval_matrix(),
+    )
+    reset_request = make_reset(clock, proposal, idempotency_key="reset-1")
 
     # Interrupted before any provider write: the sandbox has no proposed events.
     outcome = recover_interrupted_apply(store, proposal.proposal_id, adapter, reset_request, clock)
@@ -132,6 +146,8 @@ def test_interrupted_write_resets_then_reapproval_creates_no_duplicates(
         authorization=proposal.model_copy(update={"state": ProposalState.APPROVED}),
         events=events,
     )
+    with pytest.raises(PolicyViolationError, match="replay"):
+        _ = lifecycle.approve(proposed, original, default_approval_matrix())
     result = adapter.apply(plan)
 
     assert len(sandbox.proposed_events) == len(events)
@@ -144,8 +160,8 @@ def test_partial_write_requires_cleanup_before_reset(
     events = make_events(clock, 2)
     proposal = seed_approved_proposal(store, clock, events)
     adapter, sandbox = make_adapter(clock)
-    devices = enroll_device(store, clock)
-    reset_request = make_approval(clock, proposal, idempotency_key="reset-1")
+    _ = enroll_device(store, clock)
+    reset_request = make_reset(clock, proposal, idempotency_key="reset-1")
 
     # Simulate a partial write: the first event commits, the response is lost.
     plan = CalendarPlan(authorization=proposal, events=events)
@@ -161,28 +177,10 @@ def test_partial_write_requires_cleanup_before_reset(
     assert len(outcome.succeeded_events) == 1
     assert len(outcome.missing_events) == 1
 
-    # Clean up the partial event, then recovery can reset.
-    rollback = Rollback(
-        fact_id=RecordId(uuid4()),
-        proposal_id=proposal.proposal_id,
-        payload_hash=proposal.payload_hash(),
-        issued_at=clock.now(),
-        expires_at=clock.now() + timedelta(minutes=5),
-        idempotency_key="rollback-1",
-        actor=ACTOR,
-        correlation_id=CORRELATION,
-        reason="partial write cleanup",
-    )
-    applied_plan = CalendarPlan(
-        authorization=proposal.model_copy(update={"state": ProposalState.APPLIED}),
-        events=events,
-    )
-    _ = adapter.rollback(applied_plan, rollback)
-    assert sandbox.proposed_events == ()
-
-    outcome = recover_interrupted_apply(store, proposal.proposal_id, adapter, reset_request, clock)
-    assert outcome.outcome == "reset"
-    assert outcome.state == ProposalState.PROPOSED
+    # Partial effects are durably recorded, without fabricating APPLIED to delete them.
+    evidence = [item for item in store.records() if item.kind == RecordKind.EXECUTION]
+    assert len(evidence) == 1
+    assert len(sandbox.proposed_events) == 1
 
 
 def test_successful_write_reconciles_to_applied_without_reset(
@@ -191,8 +189,8 @@ def test_successful_write_reconciles_to_applied_without_reset(
     events = make_events(clock, 2)
     proposal = seed_approved_proposal(store, clock, events)
     adapter, sandbox = make_adapter(clock)
-    devices = enroll_device(store, clock)
-    reset_request = make_approval(clock, proposal, idempotency_key="reset-1")
+    _ = enroll_device(store, clock)
+    reset_request = make_reset(clock, proposal, idempotency_key="reset-1")
 
     plan = CalendarPlan(authorization=proposal, events=events)
     _ = adapter.apply(plan)
@@ -205,17 +203,16 @@ def test_successful_write_reconciles_to_applied_without_reset(
     assert set(outcome.succeeded_events) == {provider_event_id(event.event_key) for event in events}
     assert outcome.missing_events == ()
     stored = store.read(RecordKind.PROPOSAL, proposal.proposal_id)
-    assert stored is not None and stored.state == "applied"
+    assert stored is not None
+    assert stored.state == "applied"
 
 
-def test_lease_replay_is_rejected_after_reset(
-    store: EncryptedStateStore, clock: FakeClock
-) -> None:
+def test_lease_replay_is_rejected_after_reset(store: EncryptedStateStore, clock: FakeClock) -> None:
     events = make_events(clock, 1)
     proposal = seed_approved_proposal(store, clock, events)
-    adapter, sandbox = make_adapter(clock)
+    adapter, _ = make_adapter(clock)
     devices = enroll_device(store, clock)
-    reset_request = make_approval(clock, proposal, idempotency_key="reset-1")
+    reset_request = make_reset(clock, proposal, idempotency_key="reset-1")
 
     # The original apply lease was consumed before the interrupted write.
     lease = make_lease(clock, proposal, "calendar.apply", "worker-1")
@@ -228,10 +225,66 @@ def test_lease_replay_is_rejected_after_reset(
 
     # The stored proposal is PROPOSED, so apply is rejected by state.
     stored = store.read(RecordKind.PROPOSAL, proposal.proposal_id)
-    assert stored is not None and stored.state == "proposed"
+    assert stored is not None
+    assert stored.state == "proposed"
     with pytest.raises(PolicyViolationError, match="cannot apply"):
         _ = lifecycle.apply(proposal.model_copy(update={"state": ProposalState.PROPOSED}), lease)
 
     # Even a stale APPROVED view cannot replay the consumed lease.
     with pytest.raises(PolicyViolationError, match="replay"):
         _ = lifecycle.apply(proposal, lease)
+
+
+def test_ordinary_approval_cannot_authorize_reset(
+    store: EncryptedStateStore, clock: FakeClock
+) -> None:
+    events = make_events(clock, 1)
+    proposal = seed_approved_proposal(store, clock, events)
+    adapter, _ = make_adapter(clock)
+    _ = enroll_device(store, clock)
+    ordinary = make_approval(clock, proposal)
+    # Parsing the ordinary wire shape as a reset cannot change its signed purpose.
+    parsed = ResetRequest.model_validate(ordinary.model_dump())
+    with pytest.raises(PolicyViolationError, match="signature"):
+        _ = recover_interrupted_apply(store, proposal.proposal_id, adapter, parsed, clock)
+    stored = store.read(RecordKind.PROPOSAL, proposal.proposal_id)
+    assert stored is not None
+    assert stored.state == "approved"
+
+
+def test_external_edit_is_never_reported_as_applied(
+    store: EncryptedStateStore, clock: FakeClock
+) -> None:
+    events = make_events(clock, 1)
+    proposal = seed_approved_proposal(store, clock, events)
+    adapter, sandbox = make_adapter(clock)
+    _ = enroll_device(store, clock)
+    _ = adapter.apply(CalendarPlan(authorization=proposal, events=events))
+    sandbox.external_edit(sandbox.proposed_events[0].event_id, summary="User correction")
+    outcome = recover_interrupted_apply(
+        store,
+        proposal.proposal_id,
+        adapter,
+        make_reset(clock, proposal, idempotency_key="reset"),
+        clock,
+    )
+    assert outcome.outcome == "conflict"
+    assert outcome.state == ProposalState.APPROVED
+    assert sandbox.proposed_events[0].summary == "User correction"
+
+
+def test_lifecycle_reset_requires_reconciliation_and_cannot_approve(
+    store: EncryptedStateStore,
+    clock: FakeClock,
+) -> None:
+    proposal = seed_approved_proposal(store, clock, make_events(clock, 1))
+    lifecycle = ProposalLifecycle(clock, enroll_device(store, clock), store.authority_consumption)
+    proof = make_reset(clock, proposal, idempotency_key="reset")
+    with pytest.raises(PolicyViolationError, match="reconciliation"):
+        _ = lifecycle.reset(proposal, proof, default_approval_matrix(), zero_effects_verified=False)
+    with pytest.raises(PolicyViolationError, match="cannot approve"):
+        _ = lifecycle.approve(
+            proposal.model_copy(update={"state": ProposalState.PROPOSED}),
+            proof,
+            default_approval_matrix(),
+        )

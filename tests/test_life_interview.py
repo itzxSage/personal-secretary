@@ -10,6 +10,7 @@ from secretary_service.life_knowledge import (
     KnowledgeKind,
     KnowledgeState,
     LifeDomain,
+    RoutineDraft,
     Sensitivity,
 )
 from secretary_service.life_model import LifeModel
@@ -275,12 +276,10 @@ def test_confirmed_routine_becomes_planning_knowledge(
     assert routine is not None
     assert routine.days == frozenset(range(7))
     assert routine.start_time == time(22, 0)
-    assert routine.duration_minutes == 60
+    assert routine.duration_minutes == 480
 
 
-def test_work_schedule_becomes_planning_gap(
-    store: EncryptedStateStore, clock: FakeClock
-) -> None:
+def test_work_schedule_becomes_planning_gap(store: EncryptedStateStore, clock: FakeClock) -> None:
     engine = LifeInterview(store.memory, "user")
     reply = engine.begin(context(clock, "begin"))
     reply = skip_to(engine, reply, "work.schedule", clock)
@@ -311,6 +310,7 @@ def test_unconfirmed_routine_is_not_planning_knowledge(
         for f in facts
         if f.record.knowledge is not None and f.record.knowledge.key == "routines.sleep"
     )
+    assert sleep.record.knowledge is not None
     assert not sleep.record.knowledge.planning_allowed
     assert sleep.record.knowledge.pending_confirmation is not None
     assert sleep.record.confidence == 0.5
@@ -335,6 +335,7 @@ def test_skipping_confirmation_keeps_routine_unstructured(
         for f in facts
         if f.record.knowledge is not None and f.record.knowledge.key == "routines.sleep"
     )
+    assert sleep.record.knowledge is not None
     assert not sleep.record.knowledge.planning_allowed
     assert sleep.record.knowledge.pending_confirmation is None
 
@@ -345,7 +346,7 @@ def test_correcting_confirmation_reparses_and_reconfirms(
     engine = LifeInterview(store.memory, "user")
     reply = engine.begin(context(clock, "begin"))
     reply = skip_to(engine, reply, "routines.sleep", clock)
-    reply = answer(engine, reply, "I sleep at 10pm daily", clock)
+    reply = answer(engine, reply, "I sleep at 10pm daily for 8 hours", clock)
     assert reply.question is not None
     assert reply.question.mode == "confirm"
     assert "10:00 PM" in reply.question.prompt
@@ -356,6 +357,7 @@ def test_correcting_confirmation_reparses_and_reconfirms(
     reply = answer(engine, reply, "yes", clock)
     planning = LifeModel(store.memory).planning_knowledge("user", clock.now())
     assert len(planning) == 1
+    assert planning[0].record.knowledge is not None
     routine = planning[0].record.knowledge.routine
     assert routine is not None
     assert routine.start_time == time(23, 0)
@@ -376,12 +378,11 @@ def test_unknown_routine_answer_is_not_planning_knowledge(
         if f.record.knowledge is not None and f.record.knowledge.key == "routines.sleep"
     )
     assert sleep.state is KnowledgeState.UNKNOWN
+    assert sleep.record.knowledge is not None
     assert not sleep.record.knowledge.planning_allowed
 
 
-def test_routine_timezone_comes_from_context(
-    store: EncryptedStateStore, clock: FakeClock
-) -> None:
+def test_routine_timezone_comes_from_context(store: EncryptedStateStore, clock: FakeClock) -> None:
     class LocalContext(TransitionContext):
         timezone: str = "America/New_York"
 
@@ -400,7 +401,7 @@ def test_routine_timezone_comes_from_context(
     reply = engine.advance(
         reply.revision,
         "answer",
-        "I sleep at 10pm daily",
+        "I sleep at 10pm daily for 8 hours",
         local_context("answer"),
         question_key=reply.question.key,
     )
@@ -416,6 +417,92 @@ def test_routine_timezone_comes_from_context(
     )
     planning = LifeModel(store.memory).planning_knowledge("user", clock.now())
     assert len(planning) == 1
+    assert planning[0].record.knowledge is not None
     routine = planning[0].record.knowledge.routine
     assert routine is not None
     assert routine.timezone == "America/New_York"
+
+
+@pytest.mark.parametrize(
+    ("text", "missing"),
+    [
+        ("I sleep well", ("days", "duration", "start time")),
+        ("I exercise in the morning daily for 30 minutes", ("start time",)),
+        ("I run at 7am for 30 minutes", ("days",)),
+        ("I run at 7am daily with 20 minutes commute", ("duration",)),
+    ],
+)
+def test_missing_routine_facts_cannot_be_confirmed_into_a_schedule(
+    store: EncryptedStateStore, clock: FakeClock, text: str, missing: tuple[str, ...]
+) -> None:
+    engine = LifeInterview(store.memory, "user")
+    reply = skip_to(engine, engine.begin(context(clock, "begin")), "routines.sleep", clock)
+    reply = answer(engine, reply, text, clock)
+    assert reply.question is not None
+    assert all(field in reply.question.prompt for field in missing)
+    reply = answer(engine, reply, "yes", clock)
+    assert "missing scheduling details" in reply.acknowledgment
+    assert not LifeModel(store.memory).planning_knowledge("user", clock.now())
+
+
+def test_missing_duration_is_supplied_through_correction_without_losing_original_evidence(
+    store: EncryptedStateStore, clock: FakeClock
+) -> None:
+    engine = LifeInterview(store.memory, "user", timezone="America/Chicago")
+    reply = skip_to(engine, engine.begin(context(clock, "begin")), "routines.sleep", clock)
+    reply = answer(engine, reply, "I sleep at 10pm daily", clock)
+    reply = answer(engine, reply, "for 8 hours", clock)
+    assert reply.question is not None
+    assert "480 minutes" in reply.question.prompt
+    assert "America/Chicago" in reply.question.prompt
+    clock.advance(timedelta(minutes=1))
+    reply = answer(engine, reply, "yes", clock)
+    (view,) = LifeModel(store.memory).planning_knowledge("user", clock.now())
+    assert "I sleep at 10pm daily" in view.record.content
+    assert "for 8 hours" in view.record.content
+    assert view.record.provenance.source is MemorySource.USER_CORRECTION
+    assert view.record.knowledge is not None
+    assert view.record.knowledge.last_confirmed_at == clock.now()
+    assert view.record.knowledge.routine is not None
+    assert view.record.knowledge.routine.duration_minutes == 480
+    assert (
+        view.record.knowledge.routine.priority == 5
+    )  # neutral planner policy, not inferred urgency
+
+
+def test_legacy_unconfirmed_defaults_become_gaps_instead_of_trusted_facts() -> None:
+    draft = RoutineDraft.model_validate(
+        {
+            "days": list(range(7)),
+            "duration_minutes": 60,
+            "start_time": "08:00:00",
+            "timezone": "UTC",
+            "flexibility": "preferred",
+            "desired": False,
+            "priority": 8,
+            "can_move": False,
+        }
+    )
+    assert draft.days is None
+    assert draft.duration_minutes is None
+    assert draft.start_time is None
+    assert draft.missing()
+
+
+@pytest.mark.parametrize(
+    ("description", "expected_days"),
+    [
+        ("Monday through Friday", frozenset(range(5))),
+        ("daily except weekends", frozenset(range(5))),
+    ],
+)
+def test_explicit_day_ranges_and_exclusions(
+    store: EncryptedStateStore, clock: FakeClock, description: str, expected_days: frozenset[int]
+) -> None:
+    engine = LifeInterview(store.memory, "user")
+    reply = skip_to(engine, engine.begin(context(clock, "begin")), "routines.sleep", clock)
+    _ = confirm_routine(engine, reply, f"I sleep 10pm-6am {description}", clock)
+    (view,) = LifeModel(store.memory).planning_knowledge("user", clock.now())
+    assert view.record.knowledge is not None
+    assert view.record.knowledge.routine is not None
+    assert view.record.knowledge.routine.days == expected_days

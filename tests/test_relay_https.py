@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from http.client import HTTPSConnection
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal, cast, final
 from uuid import uuid4
 
 import pytest
@@ -24,6 +24,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from secretary_service.authority import Approval, ApprovalProof, ProposalRecord, ProposalState
+from secretary_service.conversation_turn import (
+    AgentUtterance,
+    ConversationTurnReply,
+    ConversationTurnService,
+    is_planning_intent,
+)
 from secretary_service.enrollment import DeviceId, DeviceRegistry
 from secretary_service.google_calendar_contract import LIFEOS_PROPOSED_CALENDAR, RemoteCalendar
 from secretary_service.google_calendar_errors import (
@@ -68,6 +74,15 @@ if TYPE_CHECKING:
     from secretary_service.google_calendar_sandbox import GoogleCalendarSandbox
 
 DEFAULT_DEVICE_ID = DeviceId(str(DEVICE))
+
+
+@final
+class ContinuityAgent:
+    """A tool-free deterministic stand-in for signed relay route coverage."""
+
+    def respond(self, history: tuple[AgentUtterance, ...]) -> ConversationTurnReply:
+        """Return the final user turn and prove the previous turn was supplied."""
+        return ConversationTurnReply(reply_text=f"history messages: {len(history)}")
 
 
 # FastAPI serializes computed fields (e.g. PlanBlock.duration_minutes) into the
@@ -314,6 +329,28 @@ def planning_relay(
         yield running
 
 
+@pytest.fixture
+def conversation_turn_relay(
+    tmp_path: Path, keys: DeterministicTestKeyProvider, clock: FakeClock
+) -> Generator[RunningRelay]:
+    """Run the exact mTLS route with a capability-free conversation provider."""
+    tls = certificates(tmp_path, clock)
+    path = tmp_path / "conversation-turn.sqlite"
+    with EncryptedStateStore.open(path, keys, clock) as store:
+        provision(store, clock, fingerprint=tls.fingerprint)
+
+    def factory(store: EncryptedStateStore) -> ConversationTurnService:
+        return ConversationTurnService(ContinuityAgent(), store.conversations)
+
+    app = create_relay_app(
+        lambda: EncryptedStateStore.open(path, keys, clock),
+        clock,
+        conversation_turn_factory=factory,
+    )
+    with serving(app, tls, clock, path, keys) as running:
+        yield running
+
+
 def approval_for(
     clock: FakeClock,
     store: EncryptedStateStore,
@@ -365,6 +402,79 @@ def test_real_mtls_delivery_retry_and_resume(relay: RunningRelay) -> None:
     assert status == 200
     assert b'"cursor":2' in response
     assert b"Private message" in response
+
+
+def test_signed_conversation_turn_preserves_follow_up_context(
+    conversation_turn_relay: RunningRelay,
+) -> None:
+    """The iPhone route authenticates each turn and loads canonical conversation history."""
+    create = json.dumps(
+        {"conversation_id": str(CONVERSATION), "title": "Hermes route proof"}
+    ).encode()
+    assert conversation_turn_relay.request("POST", "/v1/conversations", create)[0] == 200
+    first = json.dumps({"conversation_id": str(CONVERSATION), "text": "First turn"}).encode()
+    status, response = conversation_turn_relay.request("POST", "/v1/conversation/turn", first)
+    assert status == 200
+    assert json.loads(response)["reply_text"] == "history messages: 1"
+    second = json.dumps({"conversation_id": str(CONVERSATION), "text": "Follow-up"}).encode()
+    status, response = conversation_turn_relay.request("POST", "/v1/conversation/turn", second)
+    assert status == 200
+    assert json.loads(response)["reply_text"] == "history messages: 3"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Help me plan my week", True),
+        ("Plan my week", True),
+        ("Can you schedule my week?", True),
+        ("I'd like to organize my calendar", True),
+        ("Show me a week plan", True),
+        ("plan for next week", True),
+        ("What's on my calendar this week", False),
+        ("Tell me a joke", False),
+        ("Schedule the meeting for tomorrow", False),
+        ("I don't plan to travel", False),
+        ("What's the weather", False),
+        ("plan to leave", False),
+    ],
+)
+def test_is_planning_intent(text: str, expected: bool) -> None:
+    """Planning intent requires a planning verb joined to a weekly/calendar scope."""
+    assert is_planning_intent(text) is expected
+
+
+def test_planning_turn_routes_to_week_plan_preview_action(
+    conversation_turn_relay: RunningRelay,
+) -> None:
+    """A spoken planning request emits a week_plan_preview routing hint instead of
+    invoking the advisory agent; non-planning turns still consult the agent."""
+    create = json.dumps(
+        {"conversation_id": str(CONVERSATION), "title": "Planning route proof"}
+    ).encode()
+    assert conversation_turn_relay.request("POST", "/v1/conversations", create)[0] == 200
+    planning = json.dumps(
+        {"conversation_id": str(CONVERSATION), "text": "Help me plan my week"}
+    ).encode()
+    status, response = conversation_turn_relay.request(
+        "POST", "/v1/conversation/turn", planning
+    )
+    assert status == 200
+    body = json.loads(response)
+    assert body["reply_text"] == "I'll preview your week plan from your LifeOS schedule."
+    assert body["proposed_actions"] == [
+        {"action_class": "week_plan_preview", "payload": {}}
+    ]
+    follow = json.dumps(
+        {"conversation_id": str(CONVERSATION), "text": "Tell me a joke"}
+    ).encode()
+    status, response = conversation_turn_relay.request(
+        "POST", "/v1/conversation/turn", follow
+    )
+    assert status == 200
+    body = json.loads(response)
+    assert body["reply_text"] == "history messages: 3"
+    assert body["proposed_actions"] == []
 
 
 def test_no_client_certificate_rejected_by_tls(relay: RunningRelay) -> None:
