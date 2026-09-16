@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Final, Literal, final
+from typing import TYPE_CHECKING, Final, Literal, cast, final
 from uuid import UUID, uuid4
 
 import psycopg
@@ -46,6 +46,18 @@ class PostgresConsumptionStore:
         """Bind replay storage to the active execution unit of work."""
         self._connection = connection
         self._require_active = require_active
+
+    def generation(self, proposal_id: str) -> int:
+        """Read the approval round while the caller holds the execution lock."""
+        self._require_active()
+        row = self._connection.execute(
+            "SELECT COUNT(*) AS count FROM lifeos_consumption WHERE namespace = %s",
+            (f"reset-round:{proposal_id}",),
+        ).fetchone()
+        if row is None:
+            message = "missing consumption count"
+            raise RuntimeError(message)
+        return cast("tuple[int]", cast("object", row))[0]
 
     def consume(self, keys: tuple["ConsumptionKey", ...]) -> bool:
         """A conflicting key rolls back every key in this claim, but not the caller."""

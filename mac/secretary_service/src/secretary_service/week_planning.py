@@ -24,7 +24,13 @@ from secretary_service.authority import (
     ProposalLifecycle,
     ProposalRecord,
     ProposalState,
+    ResetRequest,
     default_approval_matrix,
+)
+from secretary_service.durable_calendar import (
+    CalendarRecoveryOutcome,
+    calendar_execution_lock,
+    reconcile_interrupted_apply,
 )
 from secretary_service.enrollment import DeviceRegistry
 from secretary_service.google_calendar import GoogleCalendarAdapter
@@ -118,6 +124,12 @@ class WeekPlanApproval(BoundaryModel):
     approval: Approval
 
 
+class WeekPlanRecovery(BoundaryModel):
+    """Dedicated device-signed recovery envelope."""
+
+    approval: ResetRequest
+
+
 class WeekPlanExecutionResult(BoundaryModel):
     """Successful one-shot calendar execution summary."""
 
@@ -132,7 +144,7 @@ class WeekPlanningError(Exception):
     """Base error translated by the week-planning transport boundary."""
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class WeekPlanProposalError(WeekPlanningError):
     """The durable proposal is absent, malformed, or no longer approvable."""
 
@@ -145,7 +157,7 @@ class WeekPlanProposalError(WeekPlanningError):
         return f"{self.reason}: {self.proposal_id}"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class WeekPlanningPolicyError(WeekPlanningError):
     """Approval or lease policy rejected execution."""
 
@@ -157,7 +169,7 @@ class WeekPlanningPolicyError(WeekPlanningError):
         return self.reason
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class WeekPlanningProviderError(WeekPlanningError):
     """Calendar authorization, contract, transient, or interrupted execution failed."""
 
@@ -209,7 +221,7 @@ class WeekPlanningService:
         zone = ZoneInfo(timezone)
         window_start = now.astimezone(zone).replace(hour=0, minute=0, second=0, microsecond=0)
         window_end = (window_start.astimezone(UTC) + timedelta(days=7)).astimezone(zone)
-        activities, gaps = self._map_knowledge(
+        activities, gaps = self.map_knowledge(
             LifeModel(self._store.memory).planning_knowledge(subject_id, now),
             window_start,
             zone,
@@ -279,51 +291,111 @@ class WeekPlanningService:
             calendar_dry_run=dry_run,
         )
 
-    def approve_and_apply(  # noqa: C901 - sequential governed error mapping
+    def approve_and_apply(
         self,
         proposal_id: RecordId,
         approval: Approval,
         context: TransitionContext,
         expected_device_id: UUID,
     ) -> WeekPlanExecutionResult:
-        """Apply the persisted payload under device approval and an internal lease."""
+        """Serialize approval/execution with recovery, including across processes."""
+        with calendar_execution_lock(self._store):
+            with self._store.domain_transaction():
+                proposal = self._proposal(proposal_id, ProposalState.PROPOSED)
+                self._check_device(approval, expected_device_id)
+                try:
+                    state = self._lifecycle.approve(proposal, approval, default_approval_matrix())
+                except PolicyViolationError as error:
+                    raise WeekPlanningPolicyError(APPROVAL_REJECTED) from error
+                self._store.transition(RecordKind.PROPOSAL, proposal_id, state.value, context)
+            approved = proposal.model_copy(update={"state": state})
+            return self._execute_approved(approved, approval, context)
+
+    def recover_interrupted_apply(
+        self,
+        proposal_id: RecordId,
+        proof: ResetRequest,
+        context: TransitionContext,
+        expected_device_id: UUID,
+    ) -> CalendarRecoveryOutcome:
+        """Reconcile first; resume only missing events under fresh bounded authority."""
+        with calendar_execution_lock(self._store):
+            self._check_device(proof, expected_device_id)
+            proposal = self._proposal(proposal_id, ProposalState.APPROVED)
+            try:
+                outcome = reconcile_interrupted_apply(
+                    self._store, proposal_id, self._calendar, proof, self._clock
+                )
+            except PolicyViolationError as error:
+                raise WeekPlanningPolicyError(APPROVAL_REJECTED) from error
+            if outcome.outcome != "partial":
+                return outcome
+            # Signed recovery authorizes completing only this exact original payload.
+            # Consumption commits before any provider effect; a crash requires new proof.
+            with self._store.domain_transaction():
+                if not self._store.authority_consumption.consume(
+                    (
+                        ("recover", str(proof.fact_id)),
+                        ("recover-idempotency", f"{proof.device_id}:{proof.idempotency_key}"),
+                    )
+                ):
+                    raise WeekPlanningPolicyError(APPROVAL_REJECTED)
+            _ = self._execute_approved(proposal, proof, context)
+            return outcome.model_copy(
+                update={
+                    "state": ProposalState.APPLIED,
+                    "outcome": "applied",
+                    "succeeded_events": tuple(
+                        sorted(outcome.succeeded_events + outcome.missing_events)
+                    ),
+                    "missing_events": (),
+                }
+            )
+
+    @staticmethod
+    def _check_device(approval: Approval, expected_device_id: UUID) -> None:
+        if approval.device_id is None or str(approval.device_id) != str(expected_device_id):
+            raise WeekPlanningPolicyError(DEVICE_MISMATCH)
+
+    def _proposal(self, proposal_id: RecordId, state: ProposalState) -> ProposalRecord:
         record = self._store.read(RecordKind.PROPOSAL, proposal_id)
         if record is None:
             raise WeekPlanProposalError(proposal_id, "unknown_proposal")
         if not isinstance(record, Proposal) or record.proposal_type != ACTION:
             raise WeekPlanProposalError(proposal_id, "invalid_proposal")
-        if record.state != ProposalState.PROPOSED.value:
+        if record.state != state.value:
             raise WeekPlanProposalError(proposal_id, "stale_proposal")
-        if approval.device_id is None or str(approval.device_id) != str(expected_device_id):
-            raise WeekPlanningPolicyError(DEVICE_MISMATCH)
-        proposal = ProposalRecord(
+        return ProposalRecord(
             proposal_id=record.record_id,
-            action_class=record.proposal_type,
+            action_class=ACTION,
             payload=record.payload,
-            state=ProposalState.PROPOSED,
+            state=state,
             created_at=record.created_at,
         )
-        try:
-            approved_state = self._lifecycle.approve(proposal, approval, default_approval_matrix())
-        except PolicyViolationError as error:
-            raise WeekPlanningPolicyError(APPROVAL_REJECTED) from error
-        approved = proposal.model_copy(update={"state": approved_state})
-        self._store.transition(RecordKind.PROPOSAL, proposal_id, approved_state.value, context)
-        try:
-            lease = self._leases.issue(
-                approved,
-                LeaseRequest(
-                    capability=ACTION,
-                    worker_id=WORKER,
-                    actor=ACTOR,
-                    correlation_id=CORRELATION,
-                    idempotency_key=str(approval.fact_id),
-                ),
-            )
-            _ = self._leases.verify(lease, approved)
-        except (LeaseViolationError, PolicyViolationError) as error:
-            raise WeekPlanningPolicyError(LEASE_REJECTED) from error
-        plan = CalendarPlan(authorization=approved, events=EVENTS.validate_json(record.payload))
+
+    def _execute_approved(
+        self,
+        approved: ProposalRecord,
+        approval: Approval,
+        context: TransitionContext,
+    ) -> WeekPlanExecutionResult:
+        with self._store.domain_transaction():
+            try:
+                lease = self._leases.issue(
+                    approved,
+                    LeaseRequest(
+                        capability=ACTION,
+                        worker_id=WORKER,
+                        actor=ACTOR,
+                        correlation_id=CORRELATION,
+                        idempotency_key=str(approval.fact_id),
+                    ),
+                )
+                _ = self._leases.verify(lease, approved)
+                _ = self._lifecycle.apply(approved, lease)
+            except (LeaseViolationError, PolicyViolationError) as error:
+                raise WeekPlanningPolicyError(LEASE_REJECTED) from error
+        plan = CalendarPlan(authorization=approved, events=EVENTS.validate_json(approved.payload))
         try:
             result = self._calendar.apply(plan)
         except CalendarAuthorizationError as error:
@@ -334,11 +406,10 @@ class WeekPlanningService:
             raise WeekPlanningProviderError(CALENDAR_TRANSIENT) from error
         except CalendarInterruptedError as error:
             raise WeekPlanningProviderError(CALENDAR_INTERRUPTED) from error
-        applied_state = self._lifecycle.apply(approved, lease)
-        self._store.transition(RecordKind.PROPOSAL, proposal_id, applied_state.value, context)
+        self._store.transition(RecordKind.PROPOSAL, approved.proposal_id, "applied", context)
         return WeekPlanExecutionResult(
-            proposal_id=proposal_id,
-            state=applied_state,
+            proposal_id=approved.proposal_id,
+            state=ProposalState.APPLIED,
             lease_id=lease.fact_id,
             applied_operations=sum(
                 operation.operation is not CalendarOperation.NOOP for operation in result.operations
@@ -347,9 +418,10 @@ class WeekPlanningService:
         )
 
     @staticmethod
-    def _map_knowledge(
+    def map_knowledge(
         views: tuple[KnowledgeView, ...], window_start: datetime, planning_zone: ZoneInfo
     ) -> tuple[tuple[PlanActivity, ...], tuple[PlanningGap, ...]]:
+        """Map current confirmed planning knowledge without inventing missing constraints."""
         occurrences: dict[RecordId, tuple[_RoutineOccurrence, ...]] = {}
         gaps: dict[RecordId, PlanningGap] = {}
         for view in sorted(views, key=lambda item: str(item.record.memory_id)):

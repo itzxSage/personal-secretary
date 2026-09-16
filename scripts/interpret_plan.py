@@ -10,15 +10,16 @@ from uuid import uuid4
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError
 
+from secretary_service.hermes.free_model_adapter import (
+    ErrorResponse,
+    FreeModelAdapter,
+    FreeModelSettings,
+    HTTPFreeModelTransport,
+)
 from secretary_service.keys import KeyUnavailableError, MacOSKeychainKeyProvider
 from secretary_service.planner import propose_day
 from secretary_service.planner_models import DayPlanRequest
-from secretary_service.slice.openai_interpreter import (
-    HTTPSResponsesTransport,
-    InterpretationProviderError,
-    InterpretationSettings,
-    OpenAIInterpretationAdapter,
-)
+from secretary_service.slice.validation import InterpretationProviderError
 from secretary_service.voice.privacy import RetentionVerification
 
 
@@ -27,6 +28,7 @@ class LiveInterpretationConfig(BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
     model: str = Field(min_length=1)
+    base_url: str = Field(min_length=1)
     project_id: str = Field(min_length=1)
     key_reference: str = Field(min_length=1)
     consent_until: AwareDatetime
@@ -53,8 +55,8 @@ def main() -> int:
             args.config.read_text(encoding="utf-8")
         )
         base_plan = DayPlanRequest.model_validate_json(args.base_plan.read_text(encoding="utf-8"))
-        adapter = OpenAIInterpretationAdapter(
-            settings=InterpretationSettings(
+        adapter = FreeModelAdapter(
+            settings=FreeModelSettings(
                 model=config.model,
                 project_id=config.project_id,
                 key_reference=config.key_reference,
@@ -63,10 +65,16 @@ def main() -> int:
             ),
             clock=SystemClock(),
             keys=MacOSKeychainKeyProvider(),
-            transport=HTTPSResponsesTransport(),
+            transport=HTTPFreeModelTransport(base_url=config.base_url),
             base_plan=base_plan,
         )
         proposal = adapter.interpret(sys.stdin.read(16_001), uuid4())
+        if isinstance(proposal, ErrorResponse):
+            print(
+                f"Interpretation unavailable: {proposal.error}",
+                file=sys.stderr,
+            )
+            return 1
         # Planner code, rather than the provider, computes the final schedule.
         day = propose_day(proposal.plan_request)
     except (OSError, ValidationError, KeyUnavailableError, InterpretationProviderError):

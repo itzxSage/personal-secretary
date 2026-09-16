@@ -229,6 +229,15 @@ class Approval(PayloadBoundFact):
         ).encode("ascii")
 
 
+class ResetRequest(Approval):
+    """A device proof authorizing recovery, never a new Calendar apply."""
+
+    @override
+    def signing_bytes(self, action_class: str) -> bytes:
+        """Separate reset signatures from ordinary approval signatures."""
+        return b"lifeos.reset.v1\x00" + super().signing_bytes(action_class)
+
+
 class CapabilityLease(PayloadBoundFact):
     """One-shot worker capability lease signed by the current signing key."""
 
@@ -296,10 +305,17 @@ class ProposalLifecycle:
         if proposal.state != ProposalState.PROPOSED:
             message = f"cannot approve proposal in state {proposal.state.value}"
             raise PolicyViolationError(message)
+        if isinstance(approval, ResetRequest):
+            message = "reset proof cannot approve execution"
+            raise PolicyViolationError(message)
         self.validate_approval(proposal, approval, matrix)
+        generation = self._consumption.generation(str(proposal.proposal_id))
+        proposal_key = str(proposal.proposal_id)
+        if generation:
+            proposal_key += f":{generation}"
         replay_keys = (
             ("approve", str(approval.fact_id)),
-            ("approve-proposal", str(proposal.proposal_id)),
+            ("approve-proposal", proposal_key),
             ("approve-idempotency", f"{approval.device_id}:{approval.idempotency_key}"),
         )
         if not self._consumption.consume(replay_keys):
@@ -417,8 +433,10 @@ class ProposalLifecycle:
     def reset(
         self,
         proposal: ProposalRecord,
-        reset_request: Approval,
+        reset_request: ResetRequest,
         matrix: ApprovalMatrix,
+        *,
+        zero_effects_verified: bool,
     ) -> ProposalState:
         """Reset an approved proposal to proposed with a device-signed reset proof.
 
@@ -429,15 +447,18 @@ class ProposalLifecycle:
         if proposal.state != ProposalState.APPROVED:
             message = f"cannot reset proposal in state {proposal.state.value}"
             raise PolicyViolationError(message)
+        if not zero_effects_verified:
+            message = "reset requires a dedicated proof and zero-effect reconciliation"
+            raise PolicyViolationError(message)
         self.validate_approval(proposal, reset_request, matrix)
         device_id = reset_request.device_id
         if device_id is None:
             message = "reset request requires an enrolled device id"
             raise PolicyViolationError(message)
         replay_keys = (
-            ("reset", str(reset_request.fact_id)),
-            ("reset-proposal", str(proposal.proposal_id)),
-            ("reset-idempotency", f"{device_id}:{reset_request.idempotency_key}"),
+            ("recover", str(reset_request.fact_id)),
+            (f"reset-round:{proposal.proposal_id}", str(reset_request.fact_id)),
+            ("recover-idempotency", f"{device_id}:{reset_request.idempotency_key}"),
         )
         if not self._consumption.consume(replay_keys):
             message = "reset replay"

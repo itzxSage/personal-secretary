@@ -135,7 +135,9 @@ class GoogleCalendarAdapter:
             events=tuple(sorted(events.values(), key=lambda item: item.event_id)),
         )
 
-    def reconcile(self, plan: CalendarPlan, previous: CalendarSyncState) -> CalendarReconciliation:
+    def reconcile(
+        self, plan: CalendarPlan, previous: CalendarSyncState | None
+    ) -> CalendarReconciliation:
         """Report missing or externally edited owned events without mutation."""
         state = self.sync(previous)
         return CalendarReconciliation(

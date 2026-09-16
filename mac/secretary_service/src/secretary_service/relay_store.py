@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import hmac
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, final
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from secretary_service.audit import AuditMutation
 from secretary_service.canonical import CanonicalIdentity, ConversationRecord
@@ -44,6 +45,18 @@ CLIENT_KINDS = frozenset(
 
 class RelayConflictError(Exception):
     """An event batch conflicts with the durable stream; no new event was committed."""
+
+
+@dataclass(frozen=True)
+class AgentTurnPersistence:
+    """One compare-and-swap persistence request for an assistant turn."""
+
+    conversation_id: UUID
+    device_id: UUID
+    expected_revision: int
+    text: str
+    reply: str
+    context: TransitionContext
 
 
 class RelayAccessError(Exception):
@@ -181,7 +194,8 @@ class ConversationRelayStore:
         with self._connection:
             _ = self._connection.execute("BEGIN IMMEDIATE")
             event_rows = self._connection.execute(
-                "SELECT event_id FROM relay_events WHERE conversation_id=?",
+                """SELECT record_id FROM canonical_conversation_events
+                WHERE json_extract(content_json, '$.conversation_id')=?""",
                 (str(conversation_id),),
             ).fetchall()
             _ = self._connection.execute(
@@ -237,6 +251,58 @@ class ConversationRelayStore:
             created_at=record.created_at,
             state=ConversationState(record.state),
         )
+
+    def agent_history(
+        self, conversation_id: UUID, device_id: UUID
+    ) -> tuple[int, list[tuple[str, str]]]:
+        """Return the last four exchanges; canonical content follows conversation retention."""
+        conversation = self.conversation(conversation_id, device_id)
+        if conversation.state is not ConversationState.ACTIVE:
+            raise RelayConflictError
+        rows = self._connection.execute(
+            """SELECT content_json FROM canonical_conversation_events
+            WHERE json_extract(content_json, '$.conversation_id')=?
+            AND json_extract(content_json, '$.event_type')='agent.turn'
+            ORDER BY json_extract(content_json, '$.sequence') DESC LIMIT 4""",
+            (str(conversation_id),),
+        ).fetchall()
+        records = [CanonicalEvent.model_validate_json(str(row[0])) for row in rows]
+        return (records[0].sequence if records else 0), [
+            (record.payload.split("\n", 1)[0], record.payload.split("\n", 1)[1])
+            for record in reversed(records)
+        ]
+
+    def save_agent_turn(self, request: AgentTurnPersistence) -> None:
+        """Reject concurrent stale inference and audit only a content fingerprint."""
+        with self._connection:
+            _ = self._connection.execute("BEGIN IMMEDIATE")
+            revision, _ = self.agent_history(request.conversation_id, request.device_id)
+            if revision != request.expected_revision or revision >= MAX_CONVERSATION_EVENTS:
+                raise RelayConflictError
+            record = CanonicalEvent(
+                record_id=RecordId(uuid4()),
+                created_at=request.context.occurred_at,
+                state="accepted",
+                conversation_id=RecordId(request.conversation_id),
+                sequence=revision + 1,
+                event_type="agent.turn",
+                payload=request.text.replace("\n", " ") + "\n" + request.reply,
+            )
+            _ = self._connection.execute(
+                "INSERT INTO canonical_conversation_events VALUES (?, 1, ?, ?, ?)",
+                (
+                    str(record.record_id),
+                    record.state,
+                    record.model_dump_json(),
+                    record.created_at.isoformat(),
+                ),
+            )
+            self._audit(
+                record.record_id,
+                "conversation.agent.accepted",
+                record.payload,
+                request.context,
+            )
 
     def _devices_for(self, participant_ids: tuple[RecordId, ...]) -> list[ConversationDevice]:
         rows = self._connection.execute("SELECT record_json FROM relay_devices").fetchall()

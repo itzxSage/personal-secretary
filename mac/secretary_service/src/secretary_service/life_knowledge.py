@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime, time, timedelta
 from enum import StrEnum
-from typing import ClassVar, Literal, Self
+from typing import ClassVar, Literal, Self, cast
 from zoneinfo import ZoneInfo
 
 from pydantic import ConfigDict, Field, JsonValue, model_validator
@@ -141,6 +141,41 @@ class RoutineDetails(KnowledgeModel):
         return self
 
 
+class RoutineDraft(KnowledgeModel):
+    """Unconfirmed extraction; missing scheduling facts remain missing."""
+
+    days: frozenset[int] | None = None
+    start_time: time | None = None
+    duration_minutes: int | None = Field(default=None, ge=1, le=1440)
+    timezone: NonEmpty
+    flexibility: RoutineFlexibility = RoutineFlexibility.PREFERRED
+    travel_minutes: int = Field(default=0, ge=0, le=1440)
+    preparation_minutes: int = Field(default=0, ge=0, le=1440)
+    transition_minutes: int = Field(default=0, ge=0, le=1440)
+
+    @model_validator(mode="before")
+    @classmethod
+    def recover_legacy_draft(cls, value: object) -> object:
+        """Old pending RoutineDetails included fabricated defaults; ask again safely."""
+        if isinstance(value, dict) and "desired" in value:
+            legacy = cast("dict[str, object]", value)
+            # Keep the encrypted source prose in MemoryRecord. Its old parse
+            # cannot distinguish extracted fields from invented defaults.
+            return {"timezone": legacy.get("timezone", "UTC")}
+        return cast("object", value)
+
+    def missing(self) -> tuple[str, ...]:
+        """Require only facts needed to place this routine safely."""
+        gaps: list[str] = []
+        if self.days is None:
+            gaps.append("days")
+        if self.duration_minutes is None:
+            gaps.append("duration")
+        if self.start_time is None and self.flexibility is not RoutineFlexibility.FLEXIBLE:
+            gaps.append("start time (or explicit flexible timing)")
+        return tuple(gaps)
+
+
 class ProjectDetails(KnowledgeModel):
     """Inventory before task generation, optionally linked to the existing goal graph."""
 
@@ -219,7 +254,7 @@ class KnowledgeDetails(KnowledgeModel):
     source_evidence: KnowledgeSourceEvidence | None = None
     superseded_by: RecordId | None = None
     routine: RoutineDetails | None = None
-    pending_confirmation: RoutineDetails | None = None
+    pending_confirmation: RoutineDraft | None = None
     project: ProjectDetails | None = None
     open_loop: OpenLoopDetails | None = None
 

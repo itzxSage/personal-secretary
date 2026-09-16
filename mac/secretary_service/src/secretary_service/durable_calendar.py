@@ -4,7 +4,13 @@ No provider calls or public route are enabled. Account-backed enrollment and
 worker revalidation are prerequisites before this service can execute live work.
 """
 
-import json
+import fcntl
+import os
+from collections.abc import Generator
+from contextlib import contextmanager
+from uuid import uuid4
+
+from pydantic import JsonValue, TypeAdapter
 
 from secretary_service.authority import (
     Approval,
@@ -12,6 +18,7 @@ from secretary_service.authority import (
     ProposalLifecycle,
     ProposalRecord,
     ProposalState,
+    ResetRequest,
     default_approval_matrix,
 )
 from secretary_service.enrollment import DeviceRegistry
@@ -24,6 +31,7 @@ from secretary_service.google_calendar_contract import (
 from secretary_service.models import (
     ActorId,
     CorrelationId,
+    Execution,
     FrozenModel,
     NonEmpty,
     Proposal,
@@ -123,21 +131,42 @@ class CalendarRecoveryOutcome(FrozenModel):
     missing_events: tuple[str, ...]
 
 
+@contextmanager
+def calendar_execution_lock(store: EncryptedStateStore) -> Generator[None]:
+    """Serialize provider execution and reconciliation across relay processes.
+
+    The OS releases this lock on process death. Database authorization commits
+    happen before provider calls, so a crash preserves consumed authority.
+    """
+    descriptor = os.open(str(store.path) + ".calendar.lock", os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
+
+
 def recover_interrupted_apply(
     store: EncryptedStateStore,
     proposal_id: RecordId,
     adapter: GoogleCalendarAdapter,
-    reset_request: Approval,
+    reset_request: ResetRequest,
     clock: Clock,
 ) -> CalendarRecoveryOutcome:
-    """Reconcile actual provider state before any reset of an interrupted apply.
+    """Reconcile under the execution lock before an authorized zero-effect reset."""
+    with calendar_execution_lock(store):
+        return reconcile_interrupted_apply(store, proposal_id, adapter, reset_request, clock)
 
-    The proposal must be an approved ``calendar.apply``. Provider state is
-    reconciled without mutation: events owned by the proposal that already
-    exist are recorded as succeeded, and anything else as missing. Only when
-    zero provider effects exist is the proposal reset to proposed, and only
-    then with a device-signed reset proof consumed against replay.
-    """
+
+def reconcile_interrupted_apply(
+    store: EncryptedStateStore,
+    proposal_id: RecordId,
+    adapter: GoogleCalendarAdapter,
+    reset_request: ResetRequest,
+    clock: Clock,
+) -> CalendarRecoveryOutcome:
+    """Reconcile while the caller holds the external execution lock."""
     with store.domain_transaction() as records:
         current = records.read(RecordKind.PROPOSAL, proposal_id)
         if not isinstance(current, Proposal) or current.proposal_type != "calendar.apply":
@@ -153,58 +182,75 @@ def recover_interrupted_apply(
             state=ProposalState.APPROVED,
             created_at=current.created_at,
         )
-        events = tuple(
-            CalendarEventDraft.model_validate(event) for event in json.loads(current.payload)
+        lifecycle = ProposalLifecycle(
+            clock, DeviceRegistry(clock, store.devices), store.authority_consumption
         )
+        lifecycle.validate_approval(proposal, reset_request, default_approval_matrix())
+        try:
+            raw_events = TypeAdapter(list[JsonValue]).validate_json(current.payload)
+        except ValueError as error:
+            message = "stored calendar proposal payload must be an event list"
+            raise PolicyViolationError(message) from error
+        events = tuple(CalendarEventDraft.model_validate(event) for event in raw_events)
         plan = CalendarPlan(authorization=proposal, events=events)
-
-    reconciliation = adapter.reconcile(plan, None)
-    succeeded = tuple(
-        sorted(
-            diff.event_id
+        reconciliation = adapter.reconcile(plan, None)
+        succeeded = tuple(
+            sorted(
+                diff.event_id
+                for diff in reconciliation.operations
+                if diff.operation == CalendarOperation.NOOP
+            )
+        )
+        missing = tuple(
+            sorted(
+                diff.event_id
+                for diff in reconciliation.operations
+                if diff.operation == CalendarOperation.MISSING
+            )
+        )
+        # Existing but changed/conflicting events are uncertain, never success or zero effects.
+        conflict = any(
+            diff.operation not in (CalendarOperation.NOOP, CalendarOperation.MISSING)
             for diff in reconciliation.operations
-            if diff.operation in (CalendarOperation.NOOP, CalendarOperation.EXTERNAL_EDIT)
         )
-    )
-    missing = tuple(
-        sorted(
-            diff.event_id
-            for diff in reconciliation.operations
-            if diff.operation not in (CalendarOperation.NOOP, CalendarOperation.EXTERNAL_EDIT)
+        expected = {diff.event_id for diff in reconciliation.operations}
+        conflict = conflict or any(
+            event.ownership is not None
+            and event.ownership.proposal_id == str(proposal_id)
+            and event.event_id not in expected
+            for event in reconciliation.sync_state.events
         )
-    )
-
-    context = TransitionContext(
-        actor=ActorId("calendar-recovery"),
-        correlation_id=CorrelationId("calendar-recovery"),
-        occurred_at=clock.now(),
-    )
-    if not missing:
-        store.transition(RecordKind.PROPOSAL, proposal_id, "applied", context)
-        return CalendarRecoveryOutcome(
+        state = ProposalState.APPROVED
+        outcome = "conflict" if conflict else "partial"
+        if not conflict and not missing:
+            state, outcome = ProposalState.APPLIED, "applied"
+        elif not conflict and not succeeded:
+            state = lifecycle.reset(
+                proposal, reset_request, default_approval_matrix(), zero_effects_verified=True
+            )
+            outcome = "reset"
+        result = CalendarRecoveryOutcome(
             proposal_id=proposal_id,
-            state=ProposalState.APPLIED,
-            outcome="applied",
-            succeeded_events=succeeded,
-            missing_events=(),
-        )
-    if succeeded:
-        return CalendarRecoveryOutcome(
-            proposal_id=proposal_id,
-            state=ProposalState.APPROVED,
-            outcome="partial",
+            state=state,
+            outcome=outcome,
             succeeded_events=succeeded,
             missing_events=missing,
         )
-    lifecycle = ProposalLifecycle(
-        clock, DeviceRegistry(clock, store.devices), store.authority_consumption
-    )
-    _ = lifecycle.reset(proposal, reset_request, default_approval_matrix())
-    store.transition(RecordKind.PROPOSAL, proposal_id, "proposed", context)
-    return CalendarRecoveryOutcome(
-        proposal_id=proposal_id,
-        state=ProposalState.PROPOSED,
-        outcome="reset",
-        succeeded_events=(),
-        missing_events=missing,
-    )
+        context = TransitionContext(
+            actor=reset_request.actor,
+            correlation_id=reset_request.correlation_id,
+            occurred_at=clock.now(),
+        )
+        records.create(
+            Execution(
+                record_id=RecordId(uuid4()),
+                created_at=clock.now(),
+                state="recorded",
+                proposal_id=proposal_id,
+                outcome=result.model_dump_json(),
+            ),
+            context,
+        )
+        if state != ProposalState.APPROVED:
+            records.transition(RecordKind.PROPOSAL, proposal_id, state.value, context)
+        return result

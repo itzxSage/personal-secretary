@@ -15,6 +15,7 @@ from secretary_service.life_knowledge import (
     LifeDomain,
     OpenLoopDetails,
     RoutineDetails,
+    RoutineDraft,
     RoutineFlexibility,
     Sensitivity,
 )
@@ -33,6 +34,10 @@ from secretary_service.memory_repository import MemoryRepository
 from secretary_service.models import RecordId, TransitionContext
 
 MAX_ANSWER_CHARACTERS = 8000
+HOURS_PER_HALF_DAY = 12
+MINUTES_PER_HOUR = 60
+MINUTES_PER_DAY = 1440
+HOURS_PER_DAY = 24
 
 # Deterministic routine extraction: no LLM, no free-text inference. Only
 # explicit keywords and patterns become structured planning knowledge, and the
@@ -52,8 +57,6 @@ _DAY_INDEX_BY_NAME: dict[str, int] = {
 _DAY_PATTERN = re.compile(r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b")
 _DAY_ALIAS_PATTERNS: tuple[tuple[re.Pattern[str], frozenset[int]], ...] = (
     (re.compile(r"\bweekdays?\b"), frozenset({0, 1, 2, 3, 4})),
-    (re.compile(r"\bworkdays?\b"), frozenset({0, 1, 2, 3, 4})),
-    (re.compile(r"\bwork days\b"), frozenset({0, 1, 2, 3, 4})),
     (re.compile(r"\bweekends?\b"), frozenset({5, 6})),
     (re.compile(r"\bdaily\b"), frozenset(range(7))),
     (re.compile(r"\bevery day\b"), frozenset(range(7))),
@@ -100,7 +103,15 @@ _CONFIRM_PHRASES = frozenset(
 
 
 def _extract_days(text: str) -> frozenset[int] | None:
+    if "except" in text:
+        included, excluded = text.split("except", 1)
+        base, exclusions = _extract_days(included), _extract_days(excluded)
+        return frozenset(base - exclusions) if base and exclusions and base - exclusions else None
     days: set[int] = set()
+    day = "|".join(_DAY_INDEX_BY_NAME)
+    for interval in re.finditer(rf"\b({day})\s*(?:-|to|through)\s*({day})\b", text):
+        first, last = (_DAY_INDEX_BY_NAME[name] for name in interval.groups())
+        days.update((first + offset) % 7 for offset in range((last - first) % 7 + 1))
     for match in _DAY_PATTERN.finditer(text):
         days.add(_DAY_INDEX_BY_NAME[match.group(1)])
     for pattern, indices in _DAY_ALIAS_PATTERNS:
@@ -115,36 +126,43 @@ def _extract_start_time(text: str) -> time | None:
         hour = int(match.group(1))
         minute = int(match.group(2) or 0)
         meridiem = match.group(3).casefold()
-        if meridiem == "pm" and hour < 12:
+        if meridiem == "pm" and hour < HOURS_PER_HALF_DAY:
             hour += 12
-        elif meridiem == "am" and hour == 12:
+        elif meridiem == "am" and hour == HOURS_PER_HALF_DAY:
             hour = 0
-        if 0 <= hour <= 23 and 0 <= minute <= 59:
+        if 1 <= int(match.group(1)) <= HOURS_PER_HALF_DAY and 0 <= minute < MINUTES_PER_HOUR:
             return time(hour, minute)
+        return None
     match = re.search(r"\b(\d{1,2}):(\d{2})\b", text)
     if match:
         hour = int(match.group(1))
         minute = int(match.group(2))
-        if 0 <= hour <= 23 and 0 <= minute <= 59:
+        if 0 <= hour < HOURS_PER_DAY and 0 <= minute < MINUTES_PER_HOUR:
             return time(hour, minute)
-    if re.search(r"\bin the morning\b", text):
-        return time(8, 0)
-    if re.search(r"\bin the afternoon\b", text):
-        return time(13, 0)
-    if re.search(r"\bin the evening\b", text):
-        return time(18, 0)
     return None
 
 
 def _extract_duration(text: str) -> int | None:
-    match = re.search(r"\b(\d+(?:\.\d+)?)\s*(hours?|hrs?|minutes?|mins?)\b", text)
-    if match:
+    # Time ranges are explicit elapsed durations, including overnight sleep.
+    time_pattern = r"\d{1,2}(?::\d{2})?\s*(?:am|pm)"
+    interval = re.search(rf"\b({time_pattern})\s*(?:-|\u2013|to)\s*({time_pattern})\b", text)
+    if interval:
+        start = _extract_start_time(interval.group(1))
+        end = _extract_start_time(interval.group(2))
+        if start is not None and end is not None:
+            duration = (end.hour * 60 + end.minute - start.hour * 60 - start.minute) % 1440
+            if duration:
+                return duration
+    # A commute/prep duration is not the activity's duration.
+    pattern = r"\b(\d+(?:\.\d+)?)\s*(hours?|hrs?|minutes?|mins?)\b"
+    for match in re.finditer(pattern, text):
+        suffix = text[match.end() :].lstrip(" -")
+        if suffix.startswith((*_TRAVEL_KEYWORDS, *_PREPARATION_KEYWORDS, *_TRANSITION_KEYWORDS)):
+            continue
         value = float(match.group(1))
-        unit = match.group(2).casefold()
-        minutes = (
-            int(round(value * 60)) if unit.startswith(("hour", "hr")) else int(round(value))
-        )
-        if 1 <= minutes <= 1440:
+        unit = match.group(2)
+        minutes = round(value * 60) if unit.startswith(("hour", "hr")) else round(value)
+        if 1 <= minutes <= MINUTES_PER_DAY:
             return minutes
     return None
 
@@ -204,9 +222,10 @@ class InterviewReply(KnowledgeModel):
 class LifeInterview:
     """Choose useful gaps and persist each answer with explicit provenance."""
 
-    def __init__(self, memory: MemoryRepository, subject_id: str) -> None:
+    def __init__(self, memory: MemoryRepository, subject_id: str, *, timezone: str = "UTC") -> None:
         """Bind a server-authenticated canonical subject, never a caller-selected user."""
         self.memory = memory
+        self.timezone = timezone
         self.subject_id = subject_id
         self.session_id = RecordId(uuid5(NAMESPACE_URL, f"lifeos:interview:{subject_id}"))
 
@@ -315,7 +334,7 @@ class LifeInterview:
             )
             return self._reply(updated, context.occurred_at, acknowledgment)
 
-    def _respond(
+    def _respond(  # noqa: C901, PLR0911 - explicit interview actions
         self,
         state: InterviewProgress,
         question: InterviewQuestion,
@@ -368,7 +387,10 @@ class LifeInterview:
                 "you can use 'Plan My Week' to manually place them."
             )
         if pending:
-            return updates, "I've saved that. Let me confirm the details before scheduling anything."
+            return (
+                updates,
+                "I've saved that. Let me confirm the details before scheduling anything.",
+            )
         return updates, (
             "I've put that in your inbox. We can clarify it before scheduling anything."
             if question.domain is LifeDomain.OPEN_LOOPS
@@ -406,22 +428,35 @@ class LifeInterview:
             message = "answer must contain between 1 and 8000 characters"
             raise ValueError(message)
         normalized = clean.casefold().rstrip(".!?")
+        if normalized in {"no", "no thanks", "not now", "don't plan this", "do not plan this"}:
+            return self._confirm(state, question, "", "skip", context)
         if normalized in _CONFIRM_PHRASES:
+            records = {r.memory_id: r for r in self.memory.retrieve(RetrievalScope.PRIVATE)}
+            knowledge = records[question.evidence_ids[0]].knowledge
+            pending = knowledge.pending_confirmation if knowledge is not None else None
+            if pending is None or pending.missing():
+                return {"pending_confirmation_key": question.key}, (
+                    "I still need the missing scheduling details before you can confirm. "
+                    "You can also skip and keep this as a note."
+                )
             self._resolve_pending(question, confirmed=True, context=context)
             return (
                 {"pending_confirmation_key": None},
-                "Great — I've confirmed your routine. It can now be scheduled.",
+                "I've confirmed your routine. Planning will respect its existing privacy limits.",
             )
         summary = self._reparse_pending(question, clean, context)
         return (
             {"pending_confirmation_key": question.key},
-            f"Got it. I understood: {summary}. Is this correct? "
-            "Say 'yes' to confirm or tell me what to change.",
+            (
+                f"Got it. I understood: {summary}. Is this correct? "
+                "Say 'yes' to confirm these details and allow planning, or tell me what to change."
+            ),
         )
 
     def _resolve_pending(
         self,
         question: InterviewQuestion,
+        *,
         confirmed: bool,
         context: TransitionContext,
     ) -> None:
@@ -429,14 +464,22 @@ class LifeInterview:
             return
         existing = {r.memory_id: r for r in self.memory.retrieve(RetrievalScope.PRIVATE)}
         record = existing.get(question.evidence_ids[0])
-        if record is None or record.knowledge is None or record.knowledge.pending_confirmation is None:
+        if (
+            record is None
+            or record.knowledge is None
+            or record.knowledge.pending_confirmation is None
+        ):
             return
         details = record.knowledge
+        pending = details.pending_confirmation
+        if pending is None:
+            return
         if confirmed:
             details = details.model_copy(
                 update={
-                    "planning_allowed": True,
-                    "routine": details.pending_confirmation,
+                    "planning_allowed": RetrievalScope.PLANNING in record.retrieval_scopes,
+                    "routine": RoutineDetails.model_validate(pending.model_dump()),
+                    "last_confirmed_at": context.occurred_at,
                     "pending_confirmation": None,
                 }
             )
@@ -444,12 +487,12 @@ class LifeInterview:
         else:
             details = details.model_copy(update={"pending_confirmation": None})
             confidence = record.confidence
-        self.memory.correct(
+        _ = self.memory.correct(
             record.memory_id,
             MemoryCorrection(
                 expected_revision=record.revision,
                 content=record.content,
-                provenance=record.provenance,
+                provenance=self._provenance(context, correction=True),
                 confidence=confidence,
                 retrieval_scopes=record.retrieval_scopes,
                 knowledge=details,
@@ -472,15 +515,15 @@ class LifeInterview:
         previous = record.knowledge.pending_confirmation
         fields = self._extract_routine_fields(text, context)
         if previous is not None:
-            routine = RoutineDetails.model_validate(previous.model_dump() | fields)
+            routine = RoutineDraft.model_validate(previous.model_dump() | fields)
         else:
             routine = self._build_routine(fields, context)
         details = record.knowledge.model_copy(update={"pending_confirmation": routine})
-        self.memory.correct(
+        _ = self.memory.correct(
             record.memory_id,
             MemoryCorrection(
                 expected_revision=record.revision,
-                content=text,
+                content=record.content + "\nCorrection: " + text,
                 provenance=self._provenance(context, correction=True),
                 confidence=0.5,
                 retrieval_scopes=record.retrieval_scopes,
@@ -490,9 +533,7 @@ class LifeInterview:
         )
         return self._routine_summary(routine)
 
-    def _extract_routine_fields(
-        self, text: str, context: TransitionContext
-    ) -> dict[str, object]:
+    def _extract_routine_fields(self, text: str, context: TransitionContext) -> dict[str, object]:
         lowered = text.casefold()
         fields: dict[str, object] = {}
         days = _extract_days(lowered)
@@ -514,47 +555,44 @@ class LifeInterview:
         if transition:
             fields["transition_minutes"] = transition
         flexibility = _extract_flexibility(lowered)
-        if flexibility is not RoutineFlexibility.PREFERRED:
+        if flexibility is not RoutineFlexibility.PREFERRED or "preferred" in lowered:
             fields["flexibility"] = flexibility
-        fields["timezone"] = getattr(context, "timezone", None) or "UTC"
+        fields["timezone"] = getattr(context, "timezone", None) or self.timezone
         return fields
 
-    def _build_routine(self, fields: dict[str, object], context: TransitionContext) -> RoutineDetails:
-        flexibility = fields.get("flexibility", RoutineFlexibility.PREFERRED)
-        if flexibility is RoutineFlexibility.FIXED and fields.get("start_time") is None:
-            flexibility = RoutineFlexibility.PREFERRED
-        return RoutineDetails(
-            days=fields.get("days", frozenset(range(7))),
-            start_time=fields.get("start_time"),
-            duration_minutes=fields.get("duration_minutes", 60),
-            timezone=fields.get("timezone", getattr(context, "timezone", None) or "UTC"),
-            flexibility=flexibility,
-            priority=8,
-            travel_minutes=fields.get("travel_minutes", 0),
-            preparation_minutes=fields.get("preparation_minutes", 0),
-            transition_minutes=fields.get("transition_minutes", 0),
+    def _build_routine(self, fields: dict[str, object], context: TransitionContext) -> RoutineDraft:
+        return RoutineDraft.model_validate(
+            {"timezone": getattr(context, "timezone", None) or self.timezone} | fields
         )
 
-    def _parse_routine(self, text: str, context: TransitionContext) -> RoutineDetails:
+    def _parse_routine(self, text: str, context: TransitionContext) -> RoutineDraft:
         return self._build_routine(self._extract_routine_fields(text, context), context)
 
-    def _routine_summary(self, routine: RoutineDetails) -> str:
-        day_names = ", ".join(_DAY_NAMES_BY_INDEX[i] for i in sorted(routine.days))
+    def _routine_summary(self, routine: RoutineDraft) -> str:
+        day_names = ", ".join(_DAY_NAMES_BY_INDEX[i] for i in sorted(routine.days or ()))
         start_text = (
             routine.start_time.strftime("%I:%M %p").lstrip("0")
             if routine.start_time is not None
-            else "an unspecified time"
+            else "unspecified time"
         )
-        parts = [f"{day_names} at {start_text}", f"{routine.duration_minutes} minutes"]
-        if routine.travel_minutes:
-            parts.append(f"{routine.travel_minutes} minutes travel")
-        if routine.preparation_minutes:
-            parts.append(f"{routine.preparation_minutes} minutes preparation")
-        if routine.transition_minutes:
-            parts.append(f"{routine.transition_minutes} minutes transition")
-        return "; ".join(parts) + f" (timezone {routine.timezone})"
+        parts = [f"{day_names or 'unspecified days'} at {start_text}"]
+        if routine.duration_minutes is not None:
+            parts.append(f"{routine.duration_minutes} minutes")
+        parts.extend(
+            f"{minutes} minutes {name}"
+            for name, minutes in (
+                ("travel", routine.travel_minutes),
+                ("preparation", routine.preparation_minutes),
+                ("transition", routine.transition_minutes),
+            )
+            if minutes
+        )
+        parts.append(f"{routine.flexibility.value} timing; timezone {routine.timezone}")
+        if routine.missing():
+            parts.append("Still needed: " + ", ".join(routine.missing()))
+        return "; ".join(parts)
 
-    def _question(self, state: InterviewProgress, now: datetime) -> InterviewQuestion | None:
+    def _question(self, state: InterviewProgress, now: datetime) -> InterviewQuestion | None:  # noqa: C901 - evidence-aware question selection
         if state.phase == "paused":
             return None
         views = LifeModel(self.memory).knowledge(self.subject_id, RetrievalScope.PRIVATE, now)
@@ -569,7 +607,11 @@ class LifeInterview:
                 ),
                 None,
             )
-            if pending is not None:
+            if (
+                pending is not None
+                and pending.record.knowledge is not None
+                and pending.record.knowledge.pending_confirmation is not None
+            ):
                 topic = next(
                     t
                     for t in (*WEEK_PLANNING_TOPICS, *TOPICS)
@@ -580,8 +622,11 @@ class LifeInterview:
                     key=topic.key,
                     domain=topic.domain,
                     mode="confirm",
-                    prompt=f"I understood: {summary}. Is this correct? "
-                    "Say 'yes' to confirm or tell me what to change.",
+                    prompt=(
+                        f"I understood: {summary}. Is this correct? "
+                        "Say 'yes' to confirm these details and allow planning, "
+                        "or tell me what to change."
+                    ),
                     evidence_ids=(pending.record.memory_id,),
                 )
         topics = WEEK_PLANNING_TOPICS if state.objective == "week_planning" else TOPICS
@@ -713,6 +758,11 @@ class LifeInterview:
                 for evidence_id in question.evidence_ids
                 if (source := existing[evidence_id].knowledge) is not None
             }
+            for evidence_id in question.evidence_ids:
+                source_scopes = existing[evidence_id].retrieval_scopes
+                if RetrievalScope.CONVERSATION in source_scopes:
+                    source_scopes = source_scopes | {RetrievalScope.PLANNING}
+                scopes = scopes & source_scopes
             if classifications & {Sensitivity.RESTRICTED, Sensitivity.SENSITIVE}:
                 sensitivity = (
                     Sensitivity.RESTRICTED

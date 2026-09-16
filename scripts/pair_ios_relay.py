@@ -33,6 +33,8 @@ def main() -> None:
         "LIFEOS_RELAY_SERVER_CERT_SHA256": str(metadata["serverCertificateSHA256"]),
     }
     command = [
+        "/usr/bin/env",
+        *(f"DEVICECTL_CHILD_{key}={value}" for key, value in environment.items()),
         "/usr/bin/xcrun",
         "devicectl",
         "device",
@@ -40,8 +42,6 @@ def main() -> None:
         "launch",
         "--device",
         args.device,
-        "--environment-variables",
-        json.dumps(environment, separators=(",", ":")),
         "--terminate-existing",
         "com.lifeos.SecretaryApp",
     ]

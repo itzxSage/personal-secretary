@@ -14,6 +14,10 @@ from cryptography.hazmat.primitives.serialization import Encoding
 
 from secretary_service.canonical import CanonicalIdentity
 from secretary_service.conversation_api import ConversationDevice, DeviceKind
+from secretary_service.conversation_turn_live import (
+    LiveConversationTurnConfig,
+    live_conversation_turn_factory,
+)
 from secretary_service.enrollment import DeviceId, DeviceRegistry
 from secretary_service.keys import MacOSKeychainKeyProvider
 from secretary_service.models import ActorId, CorrelationId, RecordId, TransitionContext
@@ -42,11 +46,75 @@ def _serve_arguments(commands: "argparse._SubParsersAction[argparse.ArgumentPars
         help="enable real Google Calendar previews and device-approved week-plan execution",
     )
     _ = serve.add_argument("--planning-timezone", default="America/Chicago")
+    _ = serve.add_argument(
+        "--enable-conversation-turn",
+        action="store_true",
+        help="enable reviewed, tool-free Hermes advisory conversation replies",
+    )
+    _ = serve.add_argument(
+        "--conversation-config",
+        type=Path,
+        help="JSON config for Hermes (required with --enable-conversation-turn)",
+    )
     _ = serve.add_argument("--host", default="127.0.0.1")
     _ = serve.add_argument("--port", type=int, default=8443)
     _ = serve.add_argument("--server-cert", required=True, type=Path)
     _ = serve.add_argument("--server-key", required=True, type=Path)
     _ = serve.add_argument("--client-ca", required=True, type=Path)
+
+
+def _provision(
+    args: argparse.Namespace, clock: SystemClock, keys: MacOSKeychainKeyProvider
+) -> None:
+    """Bind an explicitly enrolled iPhone to one local canonical identity."""
+    certificate = x509.load_pem_x509_certificate(args.client_cert.read_bytes())
+    fingerprint = certificate_fingerprint(certificate.public_bytes(Encoding.DER))
+    public_key = args.signing_public_key.read_text(encoding="ascii").strip()
+    with EncryptedStateStore.open(args.state, keys, clock) as store:
+        registry = DeviceRegistry(clock, store.devices)
+        device_id = DeviceId(str(args.device_id))
+        existing = registry.device(device_id)
+        if existing is None:
+            _ = registry.enroll(
+                device_id, fingerprint, ActorId("local-setup"), approval_public_key=public_key
+            )
+        else:
+            _ = registry.verify_mtls_identity(device_id, fingerprint)
+            if existing.approval_public_key != public_key:
+                message = "device already has a different signing key"
+                raise ValueError(message)
+        identities = store.canonical_records().identities
+        identity = next(
+            (value for value in identities if value.record_id == args.participant_id), None
+        )
+        if identity is None:
+            identity = CanonicalIdentity(
+                record_id=RecordId(args.participant_id),
+                created_at=clock.now(),
+                state="active",
+                display_name=args.name,
+                is_primary=not identities,
+            )
+        binding = store.conversations.device(args.device_id)
+        if binding is not None and binding.participant_id != args.participant_id:
+            message = "device is already bound to another participant"
+            raise ValueError(message)
+        store.conversations.provision(
+            identity,
+            binding
+            or ConversationDevice(
+                device_id=args.device_id,
+                participant_id=args.participant_id,
+                kind=DeviceKind.IOS,
+                name=args.name,
+                created_at=clock.now(),
+            ),
+            TransitionContext(
+                actor=ActorId("local-setup"),
+                correlation_id=CorrelationId(str(uuid4())),
+                occurred_at=clock.now(),
+            ),
+        )
 
 
 def main() -> None:
@@ -73,52 +141,10 @@ def main() -> None:
     clock = SystemClock()
     keys = MacOSKeychainKeyProvider()
     if args.command == "provision":
-        certificate = x509.load_pem_x509_certificate(args.client_cert.read_bytes())
-        fingerprint = certificate_fingerprint(certificate.public_bytes(Encoding.DER))
-        public_key = args.signing_public_key.read_text(encoding="ascii").strip()
-        with EncryptedStateStore.open(args.state, keys, clock) as store:
-            registry = DeviceRegistry(clock, store.devices)
-            device_id = DeviceId(str(args.device_id))
-            existing = registry.device(device_id)
-            if existing is None:
-                _ = registry.enroll(
-                    device_id, fingerprint, ActorId("local-setup"), approval_public_key=public_key
-                )
-            else:
-                _ = registry.verify_mtls_identity(device_id, fingerprint)
-                if existing.approval_public_key != public_key:
-                    parser.error("device already has a different signing key")
-            identities = store.canonical_records().identities
-            identity = next(
-                (value for value in identities if value.record_id == args.participant_id), None
-            )
-            if identity is None:
-                identity = CanonicalIdentity(
-                    record_id=RecordId(args.participant_id),
-                    created_at=clock.now(),
-                    state="active",
-                    display_name=args.name,
-                    is_primary=not identities,
-                )
-            binding = store.conversations.device(args.device_id)
-            if binding is not None and binding.participant_id != args.participant_id:
-                parser.error("device is already bound to another participant")
-            store.conversations.provision(
-                identity,
-                binding
-                or ConversationDevice(
-                    device_id=args.device_id,
-                    participant_id=args.participant_id,
-                    kind=DeviceKind.IOS,
-                    name=args.name,
-                    created_at=clock.now(),
-                ),
-                TransitionContext(
-                    actor=ActorId("local-setup"),
-                    correlation_id=CorrelationId(str(uuid4())),
-                    occurred_at=clock.now(),
-                ),
-            )
+        try:
+            _provision(args, clock, keys)
+        except ValueError as error:
+            parser.error(str(error))
         print("Device bound to encrypted conversation state. Production remains disabled.")
         return
     if args.command == "prune":
@@ -137,6 +163,14 @@ def main() -> None:
         _ = ZoneInfo(args.planning_timezone)
     except ZoneInfoNotFoundError:
         parser.error("unknown planning timezone")
+    conversation_turn_factory = None
+    if args.enable_conversation_turn:
+        if args.conversation_config is None:
+            parser.error("--conversation-config is required with --enable-conversation-turn")
+        config = LiveConversationTurnConfig.model_validate_json(
+            args.conversation_config.read_text(encoding="utf-8")
+        )
+        conversation_turn_factory = live_conversation_turn_factory(clock, keys, config)
     app = create_relay_app(
         lambda: EncryptedStateStore.open(args.state, keys, clock),
         clock,
@@ -144,6 +178,7 @@ def main() -> None:
             live_week_planning_factory(clock, keys) if args.enable_week_planning else None
         ),
         planning_timezone=args.planning_timezone,
+        conversation_turn_factory=conversation_turn_factory,
     )
     uvicorn.run(
         app,
