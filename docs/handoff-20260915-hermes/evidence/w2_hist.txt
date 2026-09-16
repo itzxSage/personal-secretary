@@ -1,0 +1,64 @@
+
+jrsgagne@MacBookPro personal-secretary % codex --yolo
+╭─────────────────────────────────────────────────────╮
+│ >_ OpenAI Codex (v0.154.0)                          │
+│                                                     │
+│ model:       gpt-5.6-luna medium   /model to change │
+│ directory:   ~/Development/personal-secretary       │
+│ permissions: YOLO mode                              │
+╰─────────────────────────────────────────────────────╯
+
+  Tip: Try the Desktop app. Run 'codex app' or visit https://chatgpt.com/codex?app-landing-page=true
+
+⚠ Heads up, you have less than 25% of your weekly limit left. Run /status for a breakdown.
+
+/status
+
+╭─────────────────────────────────────────────────────────────────────────────────────────╮
+│  >_ OpenAI Codex (v0.154.0)                                                             │
+│                                                                                         │
+│ Visit https://chatgpt.com/codex/settings/usage for up-to-date                           │
+│ information on rate limits and credits                                                  │
+│                                                                                         │
+│  Model:                       gpt-5.6-luna (reasoning medium, summaries auto)           │
+│  Model provider:              openai                                                    │
+│  Directory:                   ~/Development/personal-secretary                          │
+│  Permissions:                 Full Access                                               │
+│  Agents.md:                   ~/.codex/AGENTS.md                                        │
+│  Account:                     jrsgagne@gmail.com (Plus)                                 │
+│  Collaboration mode:          Default                                                   │
+│  Session:                     01a0a850-fc0d-75c2-a20c-378afcea3eb5                      │
+│                                                                                         │
+│  5h limit:                    [████████████████████] 100% left (resets 03:44 on 16 Sep) │
+│  Weekly limit:                [███░░░░░░░░░░░░░░░░░] 13% left (resets 19:01 on 19 Sep)  │
+│  Luna Reserve Weekly limit:   [████████████████████] 100% left (resets 22:44 on 22 Sep) │
+╰─────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+› Ask Codex to do anything
+
+  gpt-5.6-luna medium · ~/Development/personal-secretary
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

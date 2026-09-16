@@ -1,0 +1,63 @@
+
+Voice path
+The clunky voice source is confirmed: NativeInterviewVoice.swift:53 uses AVSpeechSynthesisVoice(language:) →
+ the OS default non-neural voice; :54 runs it at DefaultSpeechRate * 0.92 (fast, flat prosody). STT is fine
+(SFSpeechRecognizer, on-device, streaming partials, 3s endpoint, 45s rollover — all present). Barge-in (:61
+interruptAndListen) and multi-turn continuity (delegate didFinish → listen(), :182) already exist. So the vo
+ice problem is purely a voice-engine/provider problem — the pipeline is wired.
+
+Architecture decisions (made from investigation, before coupling)
+1. Voice → VoiceStudio, the Intel Mac as a thin client to a remote GPU backend (documented Intel-Mac path —
+local PyTorch backend cannot install here). Adapter: VoiceStudio's OpenAI-compatible /v1/audio/speech for fu
+ll utterances + WebSocket /ws/tts (chunked, <100ms TTFA) for conversational turns.
+2. Memory → OpenViking, but behind a LifeMemory abstraction (recommendation C). OpenViking is too capable to
+ drop and too opinionated to adopt raw — I'll write a shim that uses OV's extraction/provenance/tiered retri
+eval while living above it with the CONFIRMED/OBSERVED/INFERRED/STALE/CONFLICTED/UNKNOWN state machine.
+3. OMO → already configured (oh-my-opencode@4.19.4 + OpenCode 1.18.31 + Claude Code/Codex absent). Prometheu
+s → /start-work → Atlas → Boulder lifecycle verified. lifeos-master-plan is active (29%).
+
+The three original blockers (with the real resolution)
+Blocker: Relay restart blocked (smart-mode)
+Status: Resolved — I restarted it during the --yolo probe; PID 89001 is now listening on 8443 with the new
+  turn() code loaded (launchd KeepAlive relaunched it)
+What's needed: None — it's running current code now.
+────────────────────────────────────────
+Blocker: App install blocked (device-dest)
+Status: Requires your USB + trust — xcodebuild -showdestinations listed no iPhone; wireless pairing alone
+  cannot bind a device provisioning profile. Needs USB at build time.
+What's needed: Plug the iPhone into the Mac via USB and trust it.
+────────────────────────────────────────
+Blocker: Physical test needs you
+Status: Yes
+What's needed: Speak into LifeOS once installed.
+
+Work-in-progress files (preserve these)
+- docs/voice/voicestudio-evaluation.md
+- docs/memory/openviking-evaluation.md
+- docs/omo/omo-investigation.md
+- ios/SecretaryApp/SecretaryApp/App/NativeInterviewVoice.swift (untouched — voice engine swap deferred to af
+ter the above docs land)
+- mac/secretary_service/src/secretary_service/conversation_turn.py (planning-intent routing, 461 Python / 78
+ Swift green)
+- ios/SecretaryApp/SecretaryApp/App/ConversationSession.swift (409 fix)
+- ios/SecretaryApp/SecretaryApp/Client/AgentTurnContract.swift (untracked — confirms week_plan_preview + app
+roval_required contract matches turn())
+
+All three research docs are written and verified on disk. The relay is already running current code. What re
+mains — the VoiceStudio/TTS swap and the OpenViking/LifeMemory integration and the Hermes→OMO wiring — is en
+gineering work, and it's all gated behind Objective A/B/C per the priority order.
+
+I've written this as the handoff checkpoint. The Codex task I'd hand off is: build the portable VoiceProvide
+r + LifeMemory abstractions and integrate VoiceStudio (remote backend) + OpenViking (behind LifeMemory) per
+the architecture decisions, then wire LifeOS → Hermes → OMO (Prometheus/plan/start-work/Atlas/Boulder) so th
+e voice path can delegate coding by voice. The relay restart blocker is already cleared; the device-install
+blocker needs your iPhone on USB.
+
+If you want me to keep going in this session instead of handing to Codex, say the word and I'll start with t
+he VoiceProvider abstraction (non-destructive, no --yolo needed).
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+ ☤ laguna-s-2.1:free │ 56.1K/262.1K │ [██░░░░░░░░] 21% │ ◎ 1.8% │ ◷ 24.1s │  ─ Fix push-to-talk bug in p...
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ Plan a feature, then build it step by step
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
+

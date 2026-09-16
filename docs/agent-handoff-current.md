@@ -1,6 +1,107 @@
 # LifeOS — Independent Review Checkpoint
 
-Updated by Codex, 2026-09-14. Repository and fresh test results are authoritative.
+## Takeover checkpoint — 2026-09-15
+
+**Recovered plan:** [`.omo/plans/lifeos-master-plan.md`](../.omo/plans/lifeos-master-plan.md).
+The plan was interrupted in Task 6; its checkmarks were audited against the
+worktree rather than trusted. `43d9879` remains the last Codex-reviewed base;
+the committed campaign work is `d067f45`, `f720735`, `3cf8682`, and `0e8fa03`,
+with further uncommitted repairs in this worktree. Do not reset, clean, or
+discard this work.
+
+### Reconciled campaign status
+
+| Plan item | Actual state | Evidence / limitation |
+|---|---|---|
+| 1 OpenAI audit | IMPLEMENTED_UNVERIFIED | Existing paid adapters remain present; `interpret_plan.py` now selects the free adapter, but no production runtime composition was proven. |
+| 2–3 interview to planner | COMPLETE_VERIFIED | The signed mTLS relay path now carries its configured planning timezone. Routine extraction refuses unknown days/time/duration rather than inventing them; explicit confirmation grants planning permission. |
+| 4 Calendar recovery | COMPLETE_VERIFIED (hermetic) | The real week-planning service has a recovery route, a dedicated reset signature domain, append-only recovery generations, provider reconciliation, and a cross-process execution lock. Partial application resumes only the exact original payload under a fresh signed bounded recovery proof. Physical Google-provider recovery remains unverified. |
+| 5 planning vertical proof | COMPLETE_VERIFIED (hermetic) | Interview input through confirmation to deterministic preview, signed approval, sandbox Calendar writes: no direct `RoutineDetails` seed. |
+| 6 Hermes runtime | COMPLETE_VERIFIED (local) | Pinned Hermes `v2026.9.7` / `2237be355906fbe6065ce1815711eee52b2d646e` runs as `com.personal-secretary.hermes`, bind-only at `127.0.0.1:8642`, authenticated by a Keychain-held API key, and reports an explicit empty API toolset. A real OpenRouter free-model request completed with no tool call. |
+| 7 conversational wiring | COMPLETE_VERIFIED (synthetic) | The mTLS relay now composes only the reviewed tool-free Hermes adapter. A live synthetic two-turn conversation traversed Hermes, the Keychain-backed sidecar credential, and encrypted conversation history with zero action proposals. A separate mTLS route regression proves the iPhone endpoint authenticates each turn and supplies follow-up context. Physical speech and iPhone-to-relay delivery remain unverified. |
+| 8–9 native voice / Control Center | IMPLEMENTED_UNVERIFIED | The shared direct-listening path now activates the iOS audio session before installing its microphone tap and rejects an invalid input format without terminating. It compiles in a signed device build and is installed, but physical microphone, recognition, barge-in and Control Center invocation remain unverified. |
+| 10 full Control Center vertical | PARTIAL | Signed current app is installed on the connected iPhone; Hermes and the private-LAN relay are running. Control Center, microphone, STT/TTS and speech-to-Hermes behavior require physical evidence. Voice-driven Calendar planning is still not routed from Hermes to the deterministic planner/proposal boundary. |
+| 11 voice approval | IMPLEMENTED_UNVERIFIED | UI routes only explicit biometric device-signed approval; voice text cannot dispatch arbitrary actions. It needs an end-to-end relay test after Hermes is real. |
+
+### Defects reopened and repaired
+
+- The prior interview parser fabricated daily recurrence, one-hour duration,
+  8am morning starts and a high priority. It now creates a provenance-bearing
+  incomplete routine draft and asks for the missing planning facts.
+- The original recovery helper was disconnected from the actual week-planning
+  service. Recovery now routes through that service and relay. It does not
+  report external edits as success, and it cannot reset a proposal until
+  reconciliation proves zero LifeOS-owned provider effects.
+- A provider timeout/connection failure in iOS retains the exact approved
+  proposal encrypted for recovery. Auth/stale validation errors clear that
+  local recovery hold because they occur before Calendar execution.
+- The initially generated iOS project omitted the encrypted recovery file;
+  regenerating from `project.yml` repaired the physical iPhone build target.
+- The Push to Talk and Control Center paths called native `listen()` before the
+  iOS audio session was active. `AVAudioEngine.installTap` can terminate the
+  process for its resulting zero-channel/zero-sample-rate input format. The
+  shared listener now activates `.playAndRecord` first and reports an
+  unavailable microphone format as a recoverable error.
+- Device crash report `98E95B84-C496-48F7-8EA5-F66C9D79B44A` then identified
+  the actual recurring trap: `SFSpeechRecognizer.requestAuthorization` invoked
+  a MainActor-isolated continuation callback on a root queue. The authorization
+  bridge is now `nonisolated`; only its returned status crosses back to the
+  main-actor voice state.
+
+### Executed verification
+
+- `uv run pytest -q`: **443 passed, 30 skipped** (PostgreSQL-only skips).
+- `swift test --package-path ios/SecretaryApp`: **77 passed**.
+- `xcodebuild ... -sdk iphoneos ... CODE_SIGNING_ALLOWED=NO build`: **BUILD SUCCEEDED**.
+- Changed Python sources plus tests: Ruff format/check and basedpyright: **passed, 0 errors**.
+- `uv run scripts/verify_lifeos.py --local-only --run-id takeover-20260915`:
+  **REJECT**. Its Python, contracts, secret scan, Hermes/OpenClaw pin and local
+  F3/F4 gates passed; F2's whole-tree format/lint includes the unrelated,
+  unformatted `tools/dev_harness/` takeover work, and F1 correctly retains
+  unmet production/physical requirements. This is not evidence of a LifeOS
+  source regression. A separate `scripts/relay.py` complexity lint remains to
+  be repaired before accepting the whole-tree F2 result.
+- Hermes isolated runtime: source SHA-256
+  `c1f2401c8096e9372c46fa4ef8bdada18ed3cc84c0f5274562b86b7646ed3a87`;
+  `hermes --help` passed; authenticated `/v1/capabilities` and `/v1/toolsets`
+  passed with zero enabled toolsets; unauthenticated discovery returned 401;
+  provider-less chat returned 500 without reporting success.
+- Live Hermes proof: OpenRouter provider credential is in macOS Keychain only.
+  `nvidia/nemotron-3.5-lightning:free` returned a completed tool-free response;
+  the production relay uses `/Users/jrsgagne/.config/lifeos/hermes/conversation.json`
+  and the local `com.personal-secretary.hermes` and
+  `com.personal-secretary.staging-relay` LaunchAgents. The relay remains on the
+  private-LAN address `192.168.12.133:8443`; Hermes is not LAN-exposed.
+- `tests/test_hermes_conversation.py`, `tests/test_relay_https.py`, and
+  `tests/test_free_model_adapter.py`: **33 passed**. The live synthetic proof
+  passed with two encrypted turns and zero action proposals.
+- Signed iPhone Debug build: **BUILD SUCCEEDED** and installed on the connected
+  iPhone. Device-surface probe finds the app and a historic push-to-talk receipt;
+  Control Center has no physical receipt yet.
+- Voice crash repair: `swift test --package-path ios/SecretaryApp`: **77
+  passed**; signed `xcodebuild` against device
+  `00008120-00100D5036C2201E`: **BUILD SUCCEEDED**; the repaired app was
+  installed with `xcrun devicectl`. The device must still exercise Push to Talk
+  and Control Center to verify the AVAudioEngine path physically.
+- Crash-capture repair: the device emitted `EXC_BREAKPOINT` / `SIGTRAP` on the
+  background Speech authorization callback, with `_swift_task_checkIsolatedSwift`
+  and `NativeInterviewVoice.start(question:)` in the faulting stack. After the
+  nonisolated bridge repair, the signed build again succeeded and was installed;
+  physical retest remains required.
+- A second device report then identified the same isolation violation in the
+  `AVAudioEngine` tap: its realtime queue executed a MainActor-inherited
+  closure. The existing sendable audio sink is now passed through an explicit
+  `@Sendable` tap callback. The signed app stayed alive under `devicectl`
+  console supervision for more than 65 seconds after launch. Push to Talk and
+  Control Center still require a person to perform the final physical action.
+
+`READY_FOR_PHYSICAL_VERIFICATION` applies to the **voice conversation slice**:
+open the installed app, add its Control Center control, grant microphone/speech
+permission, invoke it, and speak two follow-up turns. The full Calendar
+demonstration remains **not ready** because Hermes has no route from spoken
+planning intent to the deterministic planner and payload-bound proposal flow.
+
+Updated by Codex, 2026-09-15. Repository and fresh test results are authoritative.
 **Software acceptance status: NOT_READY. Physical acceptance: UNVERIFIED.**
 This is an engineering review checkpoint. The complete takeover review remains in progress.
 

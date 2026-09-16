@@ -1,0 +1,11 @@
+{
+  "builder": "opencode/nemotron-3-ultra-free",
+  "debugger": "opencode/nemotron-3-ultra-free",
+  "verifier": "opencode/mimo-v2.5-free",
+  "senior_manual": "openai/gpt-6-astra",
+  "timeout_seconds": 240,
+  "planner": "opencode/mimo-v2.5-free",
+  "plan_reviewer": "opencode/nemotron-3-ultra-free",
+  "integration_reviewer": "opencode/mimo-v2.5-free",
+  "explorer": "opencode/nemotron-3.5-lightning-free"
+}
