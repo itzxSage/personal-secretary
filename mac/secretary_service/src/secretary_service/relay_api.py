@@ -23,10 +23,19 @@ from secretary_service.conversation_api import (
     Conversation,
     ConversationEvent,
 )
+from secretary_service.conversation_turn import (
+    ConversationTurn,
+    ConversationTurnProviderError,
+    ConversationTurnReply,
+    ConversationTurnService,
+)
+from secretary_service.durable_calendar import CalendarRecoveryOutcome
 from secretary_service.enrollment import DeviceRegistry
 from secretary_service.google_calendar_errors import (
     CalendarAuthorizationError,
     CalendarContractError,
+    CalendarInterruptedError,
+    CalendarTransientError,
 )
 from secretary_service.knowledge_commands import (
     KnowledgeCommand,
@@ -59,6 +68,7 @@ from secretary_service.week_planning import (
     WeekPlanningService,
     WeekPlanProposal,
     WeekPlanProposalError,
+    WeekPlanRecovery,
 )
 
 MAX_BODY_BYTES = 256 * 1024
@@ -151,17 +161,26 @@ class RelayRoutes:
         clock: Clock,
         week_planning_factory: Callable[[EncryptedStateStore], WeekPlanningService] | None = None,
         planning_timezone: str = DEFAULT_PLANNING_TIMEZONE,
+        conversation_turn_factory: (
+            Callable[[EncryptedStateStore], ConversationTurnService] | None
+        ) = None,
     ) -> None:
-        """Bind the lifespan store slot, clock, and optional governed planning service."""
+        """Bind the lifespan store slot, clock, and optional governed services."""
         self.stores = stores
         self.clock = clock
         self.week_planning_factory = week_planning_factory
         self.planning_timezone = planning_timezone
+        self.conversation_turn_factory = conversation_turn_factory
 
     def _week_planning(self) -> WeekPlanningService:
         if self.week_planning_factory is None:
             raise HTTPException(501, "week planning is not configured on this relay")
         return self.week_planning_factory(self.stores[0])
+
+    def _conversation_turn(self) -> ConversationTurnService:
+        if self.conversation_turn_factory is None:
+            raise HTTPException(501, "conversation turns are not configured on this relay")
+        return self.conversation_turn_factory(self.stores[0])
 
     async def authenticate(self, request: Request) -> tuple[bytes, UUID, TransitionContext]:
         """Authenticate the exact bounded body before parsing any caller content."""
@@ -257,7 +276,11 @@ class RelayRoutes:
         device = self.stores[0].conversations.device(device_id)
         if device is None:
             raise HTTPException(403, "user unavailable")
-        return LifeInterview(self.stores[0].memory, str(device.participant_id))
+        return LifeInterview(
+            self.stores[0].memory,
+            str(device.participant_id),
+            timezone=self.planning_timezone,
+        )
 
     async def start_interview(self, request: Request) -> InterviewReply:
         """Resume the authenticated person's interview without executing any tools."""
@@ -334,6 +357,36 @@ class RelayRoutes:
                 "calendar preview outcome is uncertain; retry preview later",
             ) from error
 
+    async def recover_week_plan(
+        self,
+        proposal_id: UUID,
+        request: Request,
+    ) -> CalendarRecoveryOutcome:
+        """Recover only under a dedicated signed, payload-bound device proof."""
+        raw, device_id, context = await self.authenticate(request)
+        try:
+            envelope = WeekPlanRecovery.model_validate_json(raw)
+        except ValidationError as error:
+            raise HTTPException(422, "invalid week-plan recovery proof") from error
+        try:
+            return self._week_planning().recover_interrupted_apply(
+                RecordId(proposal_id), envelope.approval, context, device_id
+            )
+        except WeekPlanProposalError as error:
+            raise HTTPException(409, "proposal is not awaiting recovery") from error
+        except WeekPlanningPolicyError as error:
+            raise HTTPException(403, "week-plan recovery proof was rejected") from error
+        except (
+            WeekPlanningProviderError,
+            CalendarAuthorizationError,
+            CalendarContractError,
+            CalendarTransientError,
+            CalendarInterruptedError,
+        ) as error:
+            raise HTTPException(
+                502, "calendar recovery is unresolved; request recovery again"
+            ) from error
+
     async def approve_week_plan(  # noqa: C901 - flat reason-to-status mapping
         self, proposal_id: UUID, request: Request
     ) -> WeekPlanExecutionResult:
@@ -375,12 +428,33 @@ class RelayRoutes:
                 ) from error
             raise HTTPException(502, "calendar provider failed to apply the plan") from error
 
+    async def conversation_turn(self, request: Request) -> ConversationTurnReply:
+        """Run one authenticated user text through the advisory agent."""
+        raw, device_id, context = await self.authenticate(request)
+        try:
+            turn = ConversationTurn.model_validate_json(raw)
+        except ValidationError as error:
+            raise HTTPException(422, "invalid conversation turn") from error
+        try:
+            return await self._conversation_turn().turn(turn, device_id, context)
+        except ConversationTurnProviderError as error:
+            if error.status == "consent_required":
+                raise HTTPException(403, "agent consent is not granted") from error
+            if error.status == "rate_limited":
+                raise HTTPException(
+                    503, "agent provider is rate limited; try again shortly"
+                ) from error
+            raise HTTPException(502, "agent provider is unavailable") from error
+
 
 def create_relay_app(
     open_store: Callable[[], AbstractContextManager[EncryptedStateStore]],
     clock: Clock,
     week_planning_factory: Callable[[EncryptedStateStore], WeekPlanningService] | None = None,
     planning_timezone: str = DEFAULT_PLANNING_TIMEZONE,
+    conversation_turn_factory: (
+        Callable[[EncryptedStateStore], ConversationTurnService] | None
+    ) = None,
 ) -> FastAPI:
     """Open encrypted state on the event-loop thread; fail closed without trusted TLS state."""
     stores: list[EncryptedStateStore] = []
@@ -396,7 +470,9 @@ def create_relay_app(
 
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.add_exception_handler(RequestValidationError, _invalid_request)
-    routes = RelayRoutes(stores, clock, week_planning_factory, planning_timezone)
+    routes = RelayRoutes(
+        stores, clock, week_planning_factory, planning_timezone, conversation_turn_factory
+    )
     app.add_api_route("/v1/conversations", routes.create, methods=["POST"])
     app.add_api_route("/v1/conversations/{conversation_id}/events", routes.append, methods=["POST"])
     app.add_api_route("/v1/conversations/{conversation_id}/events", routes.read, methods=["GET"])
@@ -407,6 +483,10 @@ def create_relay_app(
     app.add_api_route("/v1/knowledge/{memory_id}", routes.correct_knowledge, methods=["POST"])
     app.add_api_route("/v1/week-plan", routes.preview_week_plan, methods=["POST"])
     app.add_api_route(
+        "/v1/week-plan/{proposal_id}/recover", routes.recover_week_plan, methods=["POST"]
+    )
+    app.add_api_route(
         "/v1/week-plan/{proposal_id}/approve", routes.approve_week_plan, methods=["POST"]
     )
+    app.add_api_route("/v1/conversation/turn", routes.conversation_turn, methods=["POST"])
     return app
