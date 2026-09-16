@@ -36,6 +36,8 @@ targets:
     dependencies:
       - target: SecretaryClient
       - target: SecretaryContract
+      - target: SecretarySurfaces
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lifeos.SecretaryApp
@@ -51,7 +53,8 @@ targets:
             CFBundleURLSchemes:
               - lifeos
         NSMicrophoneUsageDescription: Secretary uses the microphone only when you explicitly start a voice session.
-        NSSpeechRecognitionUsageDescription: LifeOS turns your spoken interview answers into text using on-device speech recognition.
+        NSSpeechRecognitionUsageDescription: LifeOS transcribes your voice on this iPhone when you start a conversation.
+        NSFaceIDUsageDescription: LifeOS verifies your identity before approving the calendar changes you reviewed.
         NSLocalNetworkUsageDescription: Secretary connects to your paired Mac on your private network.
         UIApplicationSupportsIndirectInputEvents: true
         UILaunchScreen: {}
@@ -60,6 +63,31 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+  SecretarySurfaces:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: SecretaryApp/App/ConversationControl.swift
+      - path: SecretaryApp/App/ConversationWidget.swift
+      - path: SecretaryApp/App/SecretarySurfaceWidgetBundle.swift
+      - path: SecretaryApp/App/StartVoiceSessionIntent.swift
+    dependencies:
+      - target: SecretaryClient
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lifeos.SecretaryApp.Surfaces
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 946R3QHA5P
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) SECRETARY_WIDGET_EXTENSION"
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+    info:
+      path: Generated/SecretarySurfaces-Info.plist
+      properties:
+        CFBundleDisplayName: LifeOS Controls
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
   SecretaryAppTests:
     type: bundle.unit-test
     platform: iOS

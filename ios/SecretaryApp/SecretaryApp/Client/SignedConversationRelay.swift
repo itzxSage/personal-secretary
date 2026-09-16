@@ -145,6 +145,20 @@ public actor SignedConversationRelay {
         guard result.deleted else { throw ConversationRelayError.invalidResponse }
     }
 
+    /// Conversational intelligence proposes only advisory actions; execution uses separate approval APIs.
+    public func conversationTurn(conversationID: UUID, text: String) async throws -> AgentTurnReply {
+        struct Turn: Encodable { let conversation_id: UUID; let text: String }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.utf8.count <= 16_000 else {
+            throw ConversationRelayError.invalidBatch
+        }
+        let body = try Self.encoder().encode(Turn(conversation_id: conversationID, text: trimmed))
+        let reply: AgentTurnReply = try await request("POST", "/v1/conversation/turn", body: body)
+        guard !reply.replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              reply.replyText.utf8.count <= 64_000 else { throw ConversationRelayError.invalidResponse }
+        return reply
+    }
+
     public func startInterview() async throws -> LifeInterviewReply {
         try await request("POST", "/v1/interview")
     }
@@ -171,6 +185,17 @@ public actor SignedConversationRelay {
         let body = try Self.encoder().encode(WeekPlanApprovalRequest(approval: approval))
         let target = "/v1/week-plan/\(proposalID.uuidString.lowercased())/approve"
         let result: WeekPlanExecutionResult = try await request("POST", target, body: body)
+        guard result.proposalID == proposalID else { throw ConversationRelayError.invalidResponse }
+        return result
+    }
+
+    public func recoverWeekPlan(proposalID: UUID, approval: LifeOSApproval) async throws -> WeekPlanRecoveryResult {
+        guard approval.proposalID == proposalID, approval.deviceID == deviceID else {
+            throw ConversationRelayError.invalidBatch
+        }
+        let body = try Self.encoder().encode(WeekPlanApprovalRequest(approval: approval))
+        let target = "/v1/week-plan/\(proposalID.uuidString.lowercased())/recover"
+        let result: WeekPlanRecoveryResult = try await request("POST", target, body: body)
         guard result.proposalID == proposalID else { throw ConversationRelayError.invalidResponse }
         return result
     }

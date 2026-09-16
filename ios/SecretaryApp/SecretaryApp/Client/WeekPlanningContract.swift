@@ -246,6 +246,13 @@ public struct LifeOSApproval: Codable, Equatable, Sendable {
 
 public protocol LifeOSApprovalSigning: Sendable {
     func approval(for input: LifeOSApprovalInput, actionClass: String) throws -> LifeOSApproval
+    func recoveryApproval(for input: LifeOSApprovalInput) throws -> LifeOSApproval
+}
+
+public extension LifeOSApprovalSigning {
+    func recoveryApproval(for input: LifeOSApprovalInput) throws -> LifeOSApproval {
+        throw ConversationRelayError.invalidBatch
+    }
 }
 
 public struct LifeOSApprovalSigner: LifeOSApprovalSigning, Sendable {
@@ -256,6 +263,14 @@ public struct LifeOSApprovalSigner: LifeOSApprovalSigning, Sendable {
     }
 
     public func approval(for input: LifeOSApprovalInput, actionClass: String) throws -> LifeOSApproval {
+        try sign(input, actionClass: actionClass, recovery: false)
+    }
+
+    public func recoveryApproval(for input: LifeOSApprovalInput) throws -> LifeOSApproval {
+        try sign(input, actionClass: "calendar.apply", recovery: true)
+    }
+
+    private func sign(_ input: LifeOSApprovalInput, actionClass: String, recovery: Bool) throws -> LifeOSApproval {
         let unsigned = LifeOSApproval(
             factID: input.factID, proposalID: input.proposalID, payloadHash: input.payloadHash,
             issuedAt: Self.pythonISO8601(input.issuedAt), expiresAt: Self.pythonISO8601(input.expiresAt),
@@ -263,7 +278,9 @@ public struct LifeOSApprovalSigner: LifeOSApprovalSigning, Sendable {
             correlationID: input.correlationID, proof: .deviceSigned, deviceID: input.deviceID,
             signature: ""
         )
-        let signature = try signingKey.signature(for: signingData(for: unsigned, actionClass: actionClass))
+        let ordinary = try signingData(for: unsigned, actionClass: actionClass)
+        let bytes = recovery ? Data("lifeos.reset.v1\0".utf8) + ordinary : ordinary
+        let signature = try signingKey.signature(for: bytes)
         return LifeOSApproval(
             factID: unsigned.factID, proposalID: unsigned.proposalID, payloadHash: unsigned.payloadHash,
             issuedAt: unsigned.issuedAt, expiresAt: unsigned.expiresAt,
@@ -360,4 +377,19 @@ public struct WeekPlanExecutionResult: Codable, Sendable {
 
 struct WeekPlanApprovalRequest: Encodable {
     let approval: LifeOSApproval
+}
+
+public struct WeekPlanRecoveryResult: Decodable, Sendable {
+    public enum Outcome: String, Decodable, Sendable { case reset, partial, applied, conflict }
+    public let proposalID: UUID
+    public let state: String
+    public let outcome: Outcome
+    public let succeededEvents: [String]
+    public let missingEvents: [String]
+    enum CodingKeys: String, CodingKey {
+        case proposalID = "proposal_id"
+        case state, outcome
+        case succeededEvents = "succeeded_events"
+        case missingEvents = "missing_events"
+    }
 }

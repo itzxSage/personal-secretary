@@ -1,9 +1,13 @@
 import SecretaryClient
 import SecretaryContract
 import SwiftUI
+#if os(iOS)
+import AVFoundation
+#endif
 
 struct ConversationShellView: View {
     let session: ConversationSession
+    @Environment(\.scenePhase) private var scenePhase
     @State private var draft = ""
     @State private var showingDelete = false
     @State private var showingInterview = false
@@ -42,6 +46,7 @@ struct ConversationShellView: View {
         }
         .task {
             await session.loadPendingEvents()
+            await session.resumeForegroundInvocation()
 #if DEBUG && os(iOS)
             await session.runRelaySmokeTestIfRequested()
             await session.runRelaySmokeCleanupIfRequested()
@@ -60,9 +65,19 @@ struct ConversationShellView: View {
             Text("Message content is purged. Only minimized audit proof remains.")
         }
         .sheet(isPresented: $showingWeekPlan) { WeekPlanView(session: session) }
+        .onChange(of: session.showAgentWeekPlan) { _, show in
+            if show { showingWeekPlan = true; session.dismissAgentWeekPlan() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { Task { await session.endVoiceSession() } }
+            if phase == .active { Task { await session.resumeForegroundInvocation() } }
+        }
         .accessibilityIdentifier(ConversationAccessibilityID.shell.rawValue)
 #if os(iOS)
         .sheet(isPresented: $showingInterview) { LifeInterviewView(session: session) }
+        .onReceive(NotificationCenter.default.publisher(for: AVAudioSession.interruptionNotification)) { _ in
+            Task { await session.endVoiceSession() }
+        }
 #endif
     }
 
@@ -78,7 +93,9 @@ struct ConversationShellView: View {
                     .disabled(session.isBusy)
             }
 #if os(iOS)
-            Button("Know Me") { showingInterview = true }
+            Button("Know Me") {
+                Task { await session.endVoiceSession(); showingInterview = true }
+            }
 #endif
         }
         .padding()
@@ -86,13 +103,27 @@ struct ConversationShellView: View {
     }
 
     private var transcriptList: some View {
-        List(displayedTranscript, id: \.eventId) { event in
-            TranscriptRow(event: event)
+        List {
+            ForEach(displayedTranscript, id: \.eventId) { event in TranscriptRow(event: event) }
+            ForEach(session.agentMessages) { message in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(message.role).font(.caption).foregroundStyle(.secondary)
+                    Text(message.text)
+                }
+            }
+#if os(iOS)
+            if session.isSessionActive {
+                Text(session.voice.partial.isEmpty ? "Voice session active" : session.voice.partial)
+                    .foregroundStyle(.secondary)
+                if let error = session.voice.errorMessage { Text(error) }
+                Button("Interrupt and speak") { session.interruptVoice() }
+            }
+#endif
         }
         .listStyle(.plain)
         .accessibilityIdentifier(ConversationAccessibilityID.transcript.rawValue)
         .overlay {
-            if session.transcript.isEmpty {
+            if session.transcript.isEmpty && session.agentMessages.isEmpty {
                 ContentUnavailableView(
                     "No conversation yet",
                     systemImage: "waveform",
@@ -132,7 +163,7 @@ struct ConversationShellView: View {
                 .textFieldStyle(.roundedBorder)
                 .submitLabel(.send)
                 .onSubmit(sendDraft)
-                .disabled(session.isSessionActive || session.isBusy || session.hasDeliveryConflict)
+                .disabled(session.isSessionActive || session.isBusy || session.isAgentProcessing || session.hasDeliveryConflict)
                 .accessibilityLabel("Message")
                 .accessibilityIdentifier(ConversationAccessibilityID.textField.rawValue)
 
@@ -145,7 +176,7 @@ struct ConversationShellView: View {
             .buttonBorderShape(.circle)
             .disabled(
                 session.isSessionActive
-                    || session.isBusy || session.hasDeliveryConflict
+                    || session.isBusy || session.isAgentProcessing || session.hasDeliveryConflict
                     || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             )
             .accessibilityLabel("Send message")
@@ -159,10 +190,7 @@ struct ConversationShellView: View {
     private func sendDraft() {
         let text = draft
         Task {
-            if await session.sendText(text) {
-                draft = ""
-                await session.synchronize()
-            }
+            if await session.sendAgentTurn(text) { draft = "" }
         }
     }
 }
@@ -252,11 +280,17 @@ private struct WeekPlanView: View {
                     Label("Let's get you back on track", systemImage: "exclamationmark.circle")
                         .font(.title2.bold())
                     Text(message)
-                    Button(session.weekPlanProposal == nil ? "Try again" : "Create a fresh preview") {
-                        Task { await session.previewWeekPlan() }
+                    if !session.weekPlanNeedsRecovery {
+                        Button(session.weekPlanProposal == nil ? "Try again" : "Create a fresh preview") {
+                            Task { await session.previewWeekPlan() }
+                        }
+                        .buttonStyle(.borderedProminent).tint(LifeDesign.navy)
                     }
-                    .buttonStyle(.borderedProminent).tint(LifeDesign.navy)
                     if session.weekPlanProposal != nil {
+                        Button("Recover calendar changes") { Task { await session.recoverWeekPlan() } }
+                            .accessibilityIdentifier("week-plan.recover")
+                        Text("Recovery checks this same approved plan and resumes missing changes without duplicating its events.")
+                            .font(.footnote)
                         Link("Check Google Calendar", destination: URL(string: "https://calendar.google.com/calendar/u/0/r/week")!)
                     }
                 }

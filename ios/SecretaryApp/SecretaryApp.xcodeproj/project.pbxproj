@@ -13,6 +13,7 @@
 		0FD716B9F477AB25364051E9 /* EncryptedOutbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F6F197C6625C474E64D548A /* EncryptedOutbox.swift */; };
 		121870C69533544B9F45F5A5 /* ConversationIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFCE4AC7CF60756BFA21D6C4 /* ConversationIdentity.swift */; };
 		1576AEC8EC0742B97CEB910C /* ConversationShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3BF2F489124DE61A728E0D /* ConversationShellView.swift */; };
+		1ABF3FD7BE344110D355643C /* AgentConversationSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F309AD028CE3C74DC8940A51 /* AgentConversationSessionTests.swift */; };
 		1D361A794401B3702ACC18E4 /* SecretaryClient.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5691D937A70308733E6F4433 /* SecretaryClient.framework */; };
 		1F821ABF543A703D3989A967 /* SignedConversationRelayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24581FCC660D55A6F27FD80 /* SignedConversationRelayTests.swift */; };
 		1FFDBF6D5AB8E23067BD6931 /* SecretaryContract.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AA59A162F69237033FCC7FF8 /* SecretaryContract.framework */; };
@@ -20,6 +21,7 @@
 		22EEE5583FA8BDE50A70B67F /* InvocationSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C48598E67B495B5C4004607 /* InvocationSource.swift */; };
 		2414967F6A1ACDBA861F24DE /* LifeInterviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 534A4161CC6727ADB6B671ED /* LifeInterviewView.swift */; };
 		2B8CE8C02C2DC6E2D526A1C3 /* ContractCompatibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8871361D6EE967521908588 /* ContractCompatibility.swift */; };
+		2BAA83170758C94B79D5B821 /* ConversationControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29B03131862D7B8527B4A0F1 /* ConversationControl.swift */; };
 		2E01175BEAAC994B64F9FDD0 /* SecretaryContract.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AA59A162F69237033FCC7FF8 /* SecretaryContract.framework */; };
 		35E5129395FA8BF31F02CA7A /* InvocationAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64EFEEF850C6DFC6C5A11F7E /* InvocationAdapter.swift */; };
 		378151CCE04D7389AF5E71E4 /* SecretaryContract.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = AA59A162F69237033FCC7FF8 /* SecretaryContract.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -35,6 +37,7 @@
 		5B2F9E6A5CD572FED33D8179 /* SecretarySurfaceWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE055B76767C392F0BAC07E /* SecretarySurfaceWidgetBundle.swift */; };
 		67D3BA383F53059A52550176 /* SecretaryClient.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 5691D937A70308733E6F4433 /* SecretaryClient.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		697BDAA79DFD64A552305063 /* EndVoiceSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 218223E0A366437E26A8E655 /* EndVoiceSession.swift */; };
+		6F49F7C997FB707CF137C458 /* SecretarySurfaces.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5F6BD45BC40C9173768D713F /* SecretarySurfaces.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		7114A40909A62976DB791937 /* InvocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A7D7434E0AA10CDF0424FB4 /* InvocationTests.swift */; };
 		711F76ED5ACADE7EBB0118F9 /* ConversationWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4270E2D70A0C63CBC1DCEC55 /* ConversationWidget.swift */; };
 		716B24ED5EA7F1D6F33DAF61 /* DeviceSurfaceReceiptStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E293E72A45192965AA6A74C5 /* DeviceSurfaceReceiptStore.swift */; };
@@ -46,6 +49,7 @@
 		83B4EDD36C790D711D059C11 /* SecretaryShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B73B51E5E236A67811EDD72 /* SecretaryShortcuts.swift */; };
 		8632F3A378385A7098275300 /* StartVoiceSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAED34DB004F384F96055607 /* StartVoiceSession.swift */; };
 		8735E62C8AACF67A3564CE08 /* ConversationAPI.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A6DC5E50EEB846B0EAE392B /* ConversationAPI.generated.swift */; };
+		8856E9CE0D2FDDDEFC6E8425 /* StartVoiceSessionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5AAB90B9A41FFEC35D01376 /* StartVoiceSessionIntent.swift */; };
 		8863317DB0A611CFEF41E3A8 /* EnergyNotificationContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8CC5B9B8F91F6F2F05111BB /* EnergyNotificationContract.swift */; };
 		8B013F9F458660BAE551A8E1 /* ConversationEventFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AAFE592EF575DD3FA9F117C /* ConversationEventFactory.swift */; };
 		8BA86CA11BAA5F09A79586A3 /* WeekPlanningContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA78D2EAF2C9F9103859E93 /* WeekPlanningContract.swift */; };
@@ -55,7 +59,9 @@
 		92EF8FB2B426D83B233EFD97 /* InvocationMatrixTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40B2242215769B5C02D3E1D4 /* InvocationMatrixTests.swift */; };
 		9A785593D509F22B29614338 /* SecretaryClient.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 5691D937A70308733E6F4433 /* SecretaryClient.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		9E8EA5923D3FD6DC4E4D8BC6 /* ConversationAccessibilityID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C6FD7D3F1336FAFCFCCE5B /* ConversationAccessibilityID.swift */; };
+		9EA552146E65329C93D7C2E7 /* EncryptedPendingWeekPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66B6A2770D00F299065DACE9 /* EncryptedPendingWeekPlan.swift */; };
 		A2E568A574A18ACB4CD91AB8 /* LifeInterviewContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AA870E60985CD3648B2FC21 /* LifeInterviewContract.swift */; };
+		A4BDC8C543211C058600B37E /* ConversationWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4270E2D70A0C63CBC1DCEC55 /* ConversationWidget.swift */; };
 		AA37CAC842678CFFF91F4E13 /* RelayConnectionConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 216CEDE78833715A8907210C /* RelayConnectionConfiguration.swift */; };
 		AA3F80C546484F6D0F8327D4 /* SendTextMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40FF787EE68064FC00A4AB5 /* SendTextMessage.swift */; };
 		AD843CFC81BAFACCCDB23D28 /* EncryptedConversationCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E86573C8FCBB7B69151F220 /* EncryptedConversationCache.swift */; };
@@ -72,9 +78,12 @@
 		DBC0C868A3A1ECAC682ED50F /* InvocationValues.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00C83316BBE9B2BA85EAC149 /* InvocationValues.swift */; };
 		DF8671CA2300A2E0601DEE1E /* EncryptedOutboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBB5DF5B2AF4C1A64743665 /* EncryptedOutboxTests.swift */; };
 		E3086E4D1568FEDE08AD1E8F /* OutboxKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42D284574D88426BE64F00F /* OutboxKeyStore.swift */; };
+		E645EED262180EDD652DE98F /* SecretarySurfaceWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE055B76767C392F0BAC07E /* SecretarySurfaceWidgetBundle.swift */; };
 		E81AF874C43959464FD97E31 /* SecretaryClient.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5691D937A70308733E6F4433 /* SecretaryClient.framework */; };
 		EBA8011BF6CE853A0863976B /* EnergyNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D972E632070FCA99616CAACB /* EnergyNotificationTests.swift */; };
+		ECA18BDEF66A6061FC73781C /* SecretaryClient.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5691D937A70308733E6F4433 /* SecretaryClient.framework */; };
 		F2117E56E27A23D99653CE2D /* SecretaryContract.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AA59A162F69237033FCC7FF8 /* SecretaryContract.framework */; };
+		F33B29943A243328AA2011B9 /* AgentTurnContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BCB1721029EE58DF450A22 /* AgentTurnContract.swift */; };
 		F6CA20121DDE80C9FD4AFFB9 /* SecretaryContract.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = AA59A162F69237033FCC7FF8 /* SecretaryContract.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		FDDDE408B7F24A3FA9F6347B /* ConversationCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61DE22C3E48460FDDAEE8E7C /* ConversationCommand.swift */; };
 		FE5634A2968D4AFF1EF1E614 /* InvocationHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 910ECAA91C6AA26C3F1CE656 /* InvocationHandler.swift */; };
@@ -102,12 +111,26 @@
 			remoteGlobalIDString = B02F8B85D1A46998F053A7BC;
 			remoteInfo = SecretaryApp;
 		};
+		5465A13A276EE19EBD5D2971 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F5D353B7FE4389AEB085A684 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EBFF43CFE658E5D73C64C3A8;
+			remoteInfo = SecretaryClient;
+		};
 		6D4727050474E5886624828A /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F5D353B7FE4389AEB085A684 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = EBFF43CFE658E5D73C64C3A8;
 			remoteInfo = SecretaryClient;
+		};
+		72F98B3B70CE97FFB247E0D6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F5D353B7FE4389AEB085A684 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7D300F135E79AF3E7A5DA42D;
+			remoteInfo = SecretarySurfaces;
 		};
 		AB8DB4C9F91D47F09C64F622 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -194,6 +217,17 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DDD4C91FE4BF69D177890CC9 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				6F49F7C997FB707CF137C458 /* SecretarySurfaces.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -206,6 +240,7 @@
 		216CEDE78833715A8907210C /* RelayConnectionConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayConnectionConfiguration.swift; sourceTree = "<group>"; };
 		218223E0A366437E26A8E655 /* EndVoiceSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndVoiceSession.swift; sourceTree = "<group>"; };
 		29B03131862D7B8527B4A0F1 /* ConversationControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationControl.swift; sourceTree = "<group>"; };
+		29BCB1721029EE58DF450A22 /* AgentTurnContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTurnContract.swift; sourceTree = "<group>"; };
 		2A6DC5E50EEB846B0EAE392B /* ConversationAPI.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationAPI.generated.swift; sourceTree = "<group>"; };
 		2F56E186C25A53C03F124E66 /* WeekPlanningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekPlanningTests.swift; sourceTree = "<group>"; };
 		32EABB58D5FD1546775E7177 /* SecretaryContractTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SecretaryContractTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -221,9 +256,11 @@
 		56C3D91F86D33A258B4F52AE /* SecretaryApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SecretaryApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		579813115A7043EF29E7FBF7 /* VoiceConversationClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceConversationClient.swift; sourceTree = "<group>"; };
 		5BCB1102A34145B425474B6B /* SecretaryClientTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SecretaryClientTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F6BD45BC40C9173768D713F /* SecretarySurfaces.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SecretarySurfaces.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		61DE22C3E48460FDDAEE8E7C /* ConversationCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationCommand.swift; sourceTree = "<group>"; };
 		61E15E15E38080DB1B673534 /* ConversationContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationContractTests.swift; sourceTree = "<group>"; };
 		64EFEEF850C6DFC6C5A11F7E /* InvocationAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvocationAdapter.swift; sourceTree = "<group>"; };
+		66B6A2770D00F299065DACE9 /* EncryptedPendingWeekPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedPendingWeekPlan.swift; sourceTree = "<group>"; };
 		693924B4958C580A37085439 /* AppBrand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBrand.swift; sourceTree = "<group>"; };
 		6A7D7434E0AA10CDF0424FB4 /* InvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvocationTests.swift; sourceTree = "<group>"; };
 		6AAFE592EF575DD3FA9F117C /* ConversationEventFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEventFactory.swift; sourceTree = "<group>"; };
@@ -251,6 +288,7 @@
 		DFCE4AC7CF60756BFA21D6C4 /* ConversationIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationIdentity.swift; sourceTree = "<group>"; };
 		E293E72A45192965AA6A74C5 /* DeviceSurfaceReceiptStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSurfaceReceiptStore.swift; sourceTree = "<group>"; };
 		F24581FCC660D55A6F27FD80 /* SignedConversationRelayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignedConversationRelayTests.swift; sourceTree = "<group>"; };
+		F309AD028CE3C74DC8940A51 /* AgentConversationSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentConversationSessionTests.swift; sourceTree = "<group>"; };
 		F40FF787EE68064FC00A4AB5 /* SendTextMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SendTextMessage.swift; sourceTree = "<group>"; };
 		F42D284574D88426BE64F00F /* OutboxKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutboxKeyStore.swift; sourceTree = "<group>"; };
 		F839559337C017F3B70AA4B7 /* IOSInvocationMatrix.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSInvocationMatrix.swift; sourceTree = "<group>"; };
@@ -276,6 +314,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				F2117E56E27A23D99653CE2D /* SecretaryContract.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4CCBF2A05E6556CF8950A1F9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ECA18BDEF66A6061FC73781C /* SecretaryClient.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -346,6 +392,7 @@
 		291A432ACAA5F56D29CF5D3F /* SecretaryAppTests */ = {
 			isa = PBXGroup;
 			children = (
+				F309AD028CE3C74DC8940A51 /* AgentConversationSessionTests.swift */,
 				D047FB82DA48AFE0318BD572 /* WeekPlanSessionTests.swift */,
 			);
 			path = SecretaryAppTests;
@@ -360,6 +407,7 @@
 				5BCB1102A34145B425474B6B /* SecretaryClientTests.xctest */,
 				AA59A162F69237033FCC7FF8 /* SecretaryContract.framework */,
 				32EABB58D5FD1546775E7177 /* SecretaryContractTests.xctest */,
+				5F6BD45BC40C9173768D713F /* SecretarySurfaces.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -367,6 +415,7 @@
 		849A93ABF7515CB45646E0D9 /* Client */ = {
 			isa = PBXGroup;
 			children = (
+				29BCB1721029EE58DF450A22 /* AgentTurnContract.swift */,
 				17C6FD7D3F1336FAFCFCCE5B /* ConversationAccessibilityID.swift */,
 				61DE22C3E48460FDDAEE8E7C /* ConversationCommand.swift */,
 				6AAFE592EF575DD3FA9F117C /* ConversationEventFactory.swift */,
@@ -375,6 +424,7 @@
 				754F50614197B8C979024861 /* DeepLinkRouter.swift */,
 				4E86573C8FCBB7B69151F220 /* EncryptedConversationCache.swift */,
 				9F6F197C6625C474E64D548A /* EncryptedOutbox.swift */,
+				66B6A2770D00F299065DACE9 /* EncryptedPendingWeekPlan.swift */,
 				218223E0A366437E26A8E655 /* EndVoiceSession.swift */,
 				F8CC5B9B8F91F6F2F05111BB /* EnergyNotificationContract.swift */,
 				64EFEEF850C6DFC6C5A11F7E /* InvocationAdapter.swift */,
@@ -492,6 +542,25 @@
 			productReference = 32EABB58D5FD1546775E7177 /* SecretaryContractTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		7D300F135E79AF3E7A5DA42D /* SecretarySurfaces */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5F253AEA0C05E059C10EF65C /* Build configuration list for PBXNativeTarget "SecretarySurfaces" */;
+			buildPhases = (
+				33B24AC2ADBAD8D93DCB94EC /* Sources */,
+				4CCBF2A05E6556CF8950A1F9 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2742AE55111AA362BE915D48 /* PBXTargetDependency */,
+			);
+			name = SecretarySurfaces;
+			packageProductDependencies = (
+			);
+			productName = SecretarySurfaces;
+			productReference = 5F6BD45BC40C9173768D713F /* SecretarySurfaces.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		995EE0E1CE55F36BA1723AC7 /* SecretaryContract */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 49A1C15B1E4A2D20E30A8C39 /* Build configuration list for PBXNativeTarget "SecretaryContract" */;
@@ -515,6 +584,7 @@
 			buildPhases = (
 				83A0EBE9EBB6C6C5CBDC6109 /* Sources */,
 				0504432AEBFCF5A5E6153A8C /* Frameworks */,
+				DDD4C91FE4BF69D177890CC9 /* Embed Foundation Extensions */,
 				4662275B7ADF13BC52734C69 /* Embed Frameworks */,
 			);
 			buildRules = (
@@ -522,6 +592,7 @@
 			dependencies = (
 				2EA009BA7A5D803A82429783 /* PBXTargetDependency */,
 				6E3006991FACE5645D936105 /* PBXTargetDependency */,
+				30F3CE2F36EC2E859928A1E9 /* PBXTargetDependency */,
 			);
 			name = SecretaryApp;
 			packageProductDependencies = (
@@ -580,6 +651,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					7D300F135E79AF3E7A5DA42D = {
+						DevelopmentTeam = 946R3QHA5P;
+						ProvisioningStyle = Automatic;
+					};
 					B02F8B85D1A46998F053A7BC = {
 						DevelopmentTeam = 946R3QHA5P;
 						ProvisioningStyle = Automatic;
@@ -603,6 +678,7 @@
 				995EE0E1CE55F36BA1723AC7 /* SecretaryContract */,
 				EBFF43CFE658E5D73C64C3A8 /* SecretaryClient */,
 				B02F8B85D1A46998F053A7BC /* SecretaryApp */,
+				7D300F135E79AF3E7A5DA42D /* SecretarySurfaces */,
 				E01F7AC5313D6EE2C0806B52 /* SecretaryAppTests */,
 				73AE56538D2C890138001614 /* SecretaryContractTests */,
 				51F1CE854D2297F574E7915B /* SecretaryClientTests */,
@@ -615,7 +691,19 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1ABF3FD7BE344110D355643C /* AgentConversationSessionTests.swift in Sources */,
 				39C3BC252113CEF447ED79FA /* WeekPlanSessionTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		33B24AC2ADBAD8D93DCB94EC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2BAA83170758C94B79D5B821 /* ConversationControl.swift in Sources */,
+				A4BDC8C543211C058600B37E /* ConversationWidget.swift in Sources */,
+				E645EED262180EDD652DE98F /* SecretarySurfaceWidgetBundle.swift in Sources */,
+				8856E9CE0D2FDDDEFC6E8425 /* StartVoiceSessionIntent.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -623,6 +711,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F33B29943A243328AA2011B9 /* AgentTurnContract.swift in Sources */,
 				9E8EA5923D3FD6DC4E4D8BC6 /* ConversationAccessibilityID.swift in Sources */,
 				FDDDE408B7F24A3FA9F6347B /* ConversationCommand.swift in Sources */,
 				8B013F9F458660BAE551A8E1 /* ConversationEventFactory.swift in Sources */,
@@ -631,6 +720,7 @@
 				8E6D696DD9C8F7D464865B1C /* DeepLinkRouter.swift in Sources */,
 				AD843CFC81BAFACCCDB23D28 /* EncryptedConversationCache.swift in Sources */,
 				0FD716B9F477AB25364051E9 /* EncryptedOutbox.swift in Sources */,
+				9EA552146E65329C93D7C2E7 /* EncryptedPendingWeekPlan.swift in Sources */,
 				697BDAA79DFD64A552305063 /* EndVoiceSession.swift in Sources */,
 				8863317DB0A611CFEF41E3A8 /* EnergyNotificationContract.swift in Sources */,
 				7678FAFCAF02ABDED37CD5A9 /* IOSInvocationMatrix.swift in Sources */,
@@ -727,10 +817,20 @@
 			target = 995EE0E1CE55F36BA1723AC7 /* SecretaryContract */;
 			targetProxy = BF28BF1376DF069333D5F4F0 /* PBXContainerItemProxy */;
 		};
+		2742AE55111AA362BE915D48 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EBFF43CFE658E5D73C64C3A8 /* SecretaryClient */;
+			targetProxy = 5465A13A276EE19EBD5D2971 /* PBXContainerItemProxy */;
+		};
 		2EA009BA7A5D803A82429783 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = EBFF43CFE658E5D73C64C3A8 /* SecretaryClient */;
 			targetProxy = 3B28A5F4580066678D3D8AB8 /* PBXContainerItemProxy */;
+		};
+		30F3CE2F36EC2E859928A1E9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7D300F135E79AF3E7A5DA42D /* SecretarySurfaces */;
+			targetProxy = 72F98B3B70CE97FFB247E0D6 /* PBXContainerItemProxy */;
 		};
 		35B29403D271063AF8879E6B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -782,6 +882,48 @@
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
+		};
+		0313C159085DD0A00A676633 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 946R3QHA5P;
+				INFOPLIST_FILE = "Generated/SecretarySurfaces-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.SecretaryApp.Surfaces;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SECRETARY_WIDGET_EXTENSION";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		09436A27E5C2EA228CE6ACD2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 946R3QHA5P;
+				INFOPLIST_FILE = "Generated/SecretarySurfaces-Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.lifeos.SecretaryApp.Surfaces;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SECRETARY_WIDGET_EXTENSION";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
 		};
 		11DD1C4A9DD74031CA474F72 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -1107,6 +1249,15 @@
 			buildConfigurations = (
 				6D3861DF947C50FA6154AC37 /* Debug */,
 				A4D7F5AC58B2C76DE6E7058A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5F253AEA0C05E059C10EF65C /* Build configuration list for PBXNativeTarget "SecretarySurfaces" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0313C159085DD0A00A676633 /* Debug */,
+				09436A27E5C2EA228CE6ACD2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

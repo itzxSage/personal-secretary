@@ -162,7 +162,15 @@ private func makeSession(_ transport: SessionTransport, key: Curve25519.Signing.
     await session.approveWeekPlan()
     #expect(await transport.recorded().count == 2)
     await session.previewWeekPlan()
-    #expect(session.weekPlanState == .proposed)
+    if status == 502 {
+        #expect(session.weekPlanNeedsRecovery)
+        guard case .recoverableError = session.weekPlanState else {
+            Issue.record("An uncertain provider result must preserve recovery state")
+            return
+        }
+    } else {
+        #expect(session.weekPlanState == .proposed)
+    }
 }
 
 @Test(arguments: [false, true])

@@ -24,7 +24,7 @@ struct PushToTalkButton: View {
         }
         .buttonStyle(.borderedProminent)
         .tint(session.isSessionActive ? .red : .accentColor)
-        .disabled(session.isBusy || session.hasDeliveryConflict)
+        .disabled(!session.isSessionActive && (session.isBusy || session.isAgentProcessing || session.hasDeliveryConflict))
         .padding()
         .accessibilityHint(
             session.isSessionActive

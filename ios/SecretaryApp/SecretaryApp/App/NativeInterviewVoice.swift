@@ -18,6 +18,8 @@ final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
     private var tapInstalled = false
     private var generation = 0
     private var endpointTask: Task<Void, Never>?
+    private var rolloverTask: Task<Void, Never>?
+    private var permissionGeneration = 0
     private var utteranceID: ObjectIdentifier?
     private(set) var conversationEnabled = false
 
@@ -27,17 +29,18 @@ final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
     }
 
     func start(question: String) async {
-        let speech = await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
-        }
+        permissionGeneration += 1
+        let requestedGeneration = permissionGeneration
+        let speech = await Self.requestSpeechAuthorization()
         let microphone = await AVAudioApplication.requestRecordPermission()
+        guard permissionGeneration == requestedGeneration else { return }
         guard speech == .authorized, microphone else {
             fail("Microphone and speech access are needed for voice. You can still type.")
             return
         }
         conversationEnabled = true
         errorMessage = nil
-        speak(question)
+        if question.isEmpty { listen() } else { speak(question) }
     }
 
     func speak(_ text: String) {
@@ -45,9 +48,7 @@ final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
         stopCapture()
         synthesizer.stopSpeaking(at: .immediate)
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .voiceChat,
-                                                           options: [.defaultToSpeaker, .allowBluetoothHFP])
-            try AVAudioSession.sharedInstance().setActive(true)
+            try activateAudioSession()
             let utterance = AVSpeechUtterance(string: text)
             utterance.voice = AVSpeechSynthesisVoice(language: Locale.current.identifier)
             utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92
@@ -72,14 +73,20 @@ final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
             return
         }
         do {
+            try activateAudioSession()
             let request = SFSpeechAudioBufferRecognitionRequest()
             request.requiresOnDeviceRecognition = true
             request.shouldReportPartialResults = true
             audioRequest = request
             partial = ""
             let input = engine.inputNode
+            let format = input.outputFormat(forBus: 0)
+            guard format.sampleRate > 0, format.channelCount > 0 else {
+                fail("Microphone is unavailable right now. You can type your answer.")
+                return
+            }
             let sink = InterviewAudioSink(request)
-            input.installTap(onBus: 0, bufferSize: 1024, format: input.outputFormat(forBus: 0)) {
+            input.installTap(onBus: 0, bufferSize: 1024, format: format) { @Sendable
                 buffer, _ in sink.append(buffer)
             }
             tapInstalled = true
@@ -87,6 +94,13 @@ final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
             try engine.start()
             state = .listening
             let current = generation
+            // Renew recognizers before the platform's bounded request lifetime. Preserve a
+            // nonempty partial as one turn; silence simply starts another capture window.
+            rolloverTask = Task { @MainActor [weak self] in
+                do { try await Task.sleep(for: .seconds(45)) } catch { return }
+                guard let self, self.generation == current, self.conversationEnabled else { return }
+                self.finishAnswer()
+            }
             recognition = recognizer.recognitionTask(with: request) { [weak self] result, error in
                 let text = result?.bestTranscription.formattedString
                 let final = result?.isFinal == true
@@ -112,12 +126,16 @@ final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
     func finishAnswer() {
         let text = partial.trimmingCharacters(in: .whitespacesAndNewlines)
         stopCapture()
-        guard !text.isEmpty else { state = .idle; return }
+        guard !text.isEmpty else {
+            if conversationEnabled { listen() } else { state = .idle }
+            return
+        }
         state = .processing
         onAnswer?(text)
     }
 
     func pause() {
+        permissionGeneration += 1
         conversationEnabled = false
         utteranceID = nil
         synthesizer.stopSpeaking(at: .immediate)
@@ -127,6 +145,8 @@ final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
     }
 
     private func stopCapture() {
+        rolloverTask?.cancel()
+        rolloverTask = nil
         endpointTask?.cancel()
         endpointTask = nil
         generation += 1
@@ -136,6 +156,21 @@ final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
         recognition?.cancel()
         recognition = nil
         audioRequest = nil
+    }
+
+    private func activateAudioSession() throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playAndRecord, mode: .voiceChat,
+                                options: [.defaultToSpeaker, .allowBluetoothHFP])
+        try session.setActive(true)
+    }
+
+    nonisolated private static func requestSpeechAuthorization() async -> SFSpeechRecognizerAuthorizationStatus {
+        await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { status in
+                continuation.resume(returning: status)
+            }
+        }
     }
 
     private func fail(_ message: String) {
