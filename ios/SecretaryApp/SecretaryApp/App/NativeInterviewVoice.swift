@@ -5,13 +5,13 @@ import Observation
 
 /// Native voice transport. Conversation facts and interview progress live in Life Engine.
 @Observable @MainActor
-final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
+final class NativeInterviewVoice: NSObject, VoiceProviderDelegate {
     enum State { case idle, speaking, listening, processing, error }
     private(set) var state: State = .idle
     private(set) var partial = ""
     private(set) var errorMessage: String?
     var onAnswer: (@MainActor (String) -> Void)?
-    private let synthesizer = AVSpeechSynthesizer()
+    private let provider: any VoiceProvider
     private let engine = AVAudioEngine()
     private var recognition: SFSpeechRecognitionTask?
     private var audioRequest: SFSpeechAudioBufferRecognitionRequest?
@@ -20,12 +20,12 @@ final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
     private var endpointTask: Task<Void, Never>?
     private var rolloverTask: Task<Void, Never>?
     private var permissionGeneration = 0
-    private var utteranceID: ObjectIdentifier?
     private(set) var conversationEnabled = false
 
-    override init() {
+    init(provider: (any VoiceProvider)? = nil) {
+        self.provider = provider ?? NativeSpeechProvider()
         super.init()
-        synthesizer.delegate = self
+        self.provider.delegate = self
     }
 
     func start(question: String) async {
@@ -46,22 +46,13 @@ final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
     func speak(_ text: String) {
         guard conversationEnabled else { return }
         stopCapture()
-        synthesizer.stopSpeaking(at: .immediate)
-        do {
-            try activateAudioSession()
-            let utterance = AVSpeechUtterance(string: text)
-            utterance.voice = AVSpeechSynthesisVoice(language: Locale.current.identifier)
-            utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92
-            utteranceID = ObjectIdentifier(utterance)
-            state = .speaking
-            synthesizer.speak(utterance)
-        } catch { fail("Audio is unavailable right now. You can type your answer.") }
+        state = .speaking
+        provider.speak(text)
     }
 
     func interruptAndListen() {
         guard conversationEnabled else { return }
-        utteranceID = nil
-        synthesizer.stopSpeaking(at: .immediate)
+        provider.stop()
         listen()
     }
 
@@ -73,7 +64,7 @@ final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
             return
         }
         do {
-            try activateAudioSession()
+            try provider.activateAudioSession()
             let request = SFSpeechAudioBufferRecognitionRequest()
             request.requiresOnDeviceRecognition = true
             request.shouldReportPartialResults = true
@@ -137,11 +128,10 @@ final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
     func pause() {
         permissionGeneration += 1
         conversationEnabled = false
-        utteranceID = nil
-        synthesizer.stopSpeaking(at: .immediate)
+        provider.stop()
         stopCapture()
         state = .idle
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        provider.deactivateAudioSession()
     }
 
     private func stopCapture() {
@@ -158,13 +148,6 @@ final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
         audioRequest = nil
     }
 
-    private func activateAudioSession() throws {
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .voiceChat,
-                                options: [.defaultToSpeaker, .allowBluetoothHFP])
-        try session.setActive(true)
-    }
-
     nonisolated private static func requestSpeechAuthorization() async -> SFSpeechRecognizerAuthorizationStatus {
         await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { status in
@@ -179,13 +162,23 @@ final class NativeInterviewVoice: NSObject, AVSpeechSynthesizerDelegate {
         state = .error
     }
 
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer,
-                                      didFinish utterance: AVSpeechUtterance) {
-        let identifier = ObjectIdentifier(utterance)
-        Task { @MainActor [weak self] in
-            guard let self, self.conversationEnabled, self.utteranceID == identifier else { return }
-            self.listen()
-        }
+    // MARK: - VoiceProviderDelegate
+
+    func voiceProviderDidStart(_ provider: any VoiceProvider) {
+        state = .speaking
+    }
+
+    func voiceProviderDidFinish(_ provider: any VoiceProvider) {
+        guard conversationEnabled else { return }
+        listen()
+    }
+
+    func voiceProviderDidCancel(_ provider: any VoiceProvider) {
+        // An intentional stop/cancel must not restart listening.
+    }
+
+    func voiceProvider(_ provider: any VoiceProvider, didFailWith error: any Error) {
+        fail("Audio is unavailable right now. You can type your answer.")
     }
 }
 
