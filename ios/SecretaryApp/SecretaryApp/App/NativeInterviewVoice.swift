@@ -1,3 +1,42 @@
+import Foundation
+
+enum VoiceProviderChoice: Equatable {
+    case studio
+    case native
+}
+
+enum VoiceProviderSelection {
+    static func choose(config: VoiceStudioConfig?, reachable: Bool) -> VoiceProviderChoice {
+        guard let config, reachable else { return .native }
+        return .studio
+    }
+}
+
+/// Injectable so tests never touch the network.
+@MainActor
+protocol VoiceStudioHealthChecking: AnyObject {
+    func isReachable(config: VoiceStudioConfig) async -> Bool
+}
+
+/// Any HTTP response means the endpoint is reachable; transport errors mean not.
+@MainActor
+final class VoiceStudioHealthCheck: VoiceStudioHealthChecking {
+    private let session: URLSession
+    init(session: URLSession = .shared) { self.session = session }
+
+    func isReachable(config: VoiceStudioConfig) async -> Bool {
+        var request = URLRequest(url: config.baseURL)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = min(config.timeout, 2)
+        do {
+            let (_, response) = try await session.data(for: request)
+            return response is HTTPURLResponse
+        } catch {
+            return false
+        }
+    }
+}
+
 #if os(iOS)
 @preconcurrency import AVFoundation
 @preconcurrency import Speech
@@ -11,7 +50,13 @@ final class NativeInterviewVoice: NSObject, VoiceProviderDelegate {
     private(set) var partial = ""
     private(set) var errorMessage: String?
     var onAnswer: (@MainActor (String) -> Void)?
-    private let provider: any VoiceProvider
+    private var provider: any VoiceProvider
+    private let healthCheck: any VoiceStudioHealthChecking
+    private let studioProviderFactory: (VoiceStudioConfig) -> any VoiceProvider
+    private let fallbackProviderFactory: () -> any VoiceProvider
+    private var providerResolved = false
+    private(set) var resolvedChoice: VoiceProviderChoice?
+    private var pendingText: String?
     private let engine = AVAudioEngine()
     private var recognition: SFSpeechRecognitionTask?
     private var audioRequest: SFSpeechAudioBufferRecognitionRequest?
@@ -20,10 +65,22 @@ final class NativeInterviewVoice: NSObject, VoiceProviderDelegate {
     private var endpointTask: Task<Void, Never>?
     private var rolloverTask: Task<Void, Never>?
     private var permissionGeneration = 0
-    private(set) var conversationEnabled = false
+    var conversationEnabled = false
 
-    init(provider: (any VoiceProvider)? = nil) {
-        self.provider = provider ?? NativeSpeechProvider()
+    init(provider: (any VoiceProvider)? = nil,
+         healthCheck: (any VoiceStudioHealthChecking)? = nil,
+         studioProviderFactory: @escaping (VoiceStudioConfig) -> any VoiceProvider = { VoiceStudioProvider(config: $0) },
+         fallbackProvider: @escaping () -> any VoiceProvider = { NativeSpeechProvider() }) {
+        if let provider {
+            self.provider = provider
+            self.providerResolved = true
+        } else {
+            self.provider = NativeSpeechProvider()
+            self.providerResolved = false
+        }
+        self.healthCheck = healthCheck ?? VoiceStudioHealthCheck()
+        self.studioProviderFactory = studioProviderFactory
+        self.fallbackProviderFactory = fallbackProvider
         super.init()
         self.provider.delegate = self
     }
@@ -40,18 +97,41 @@ final class NativeInterviewVoice: NSObject, VoiceProviderDelegate {
         }
         conversationEnabled = true
         errorMessage = nil
+        await resolveProviderIfNeeded()
         if question.isEmpty { listen() } else { speak(question) }
+    }
+
+    /// Resolves the speech provider once: VoiceStudio when configured and
+    /// reachable, otherwise native. `config` defaults to the environment
+    /// (UserDefaults/plist/launch arguments); tests pass an explicit value.
+    func resolveProviderIfNeeded(config: VoiceStudioConfig? = nil) async {
+        guard !providerResolved else { return }
+        providerResolved = true
+        let resolvedConfig = config ?? VoiceStudioConfig.fromEnvironment()
+        var reachable = false
+        if let resolvedConfig {
+            reachable = await healthCheck.isReachable(config: resolvedConfig)
+        }
+        let choice = VoiceProviderSelection.choose(config: resolvedConfig, reachable: reachable)
+        resolvedChoice = choice
+        guard choice == .studio, let resolvedConfig else { return }
+        let studio = studioProviderFactory(resolvedConfig)
+        provider.delegate = nil
+        provider = studio
+        provider.delegate = self
     }
 
     func speak(_ text: String) {
         guard conversationEnabled else { return }
         stopCapture()
         state = .speaking
+        pendingText = text
         provider.speak(text)
     }
 
     func interruptAndListen() {
         guard conversationEnabled else { return }
+        pendingText = nil
         provider.stop()
         listen()
     }
@@ -128,6 +208,7 @@ final class NativeInterviewVoice: NSObject, VoiceProviderDelegate {
     func pause() {
         permissionGeneration += 1
         conversationEnabled = false
+        pendingText = nil
         provider.stop()
         stopCapture()
         state = .idle
@@ -169,16 +250,37 @@ final class NativeInterviewVoice: NSObject, VoiceProviderDelegate {
     }
 
     func voiceProviderDidFinish(_ provider: any VoiceProvider) {
+        pendingText = nil
         guard conversationEnabled else { return }
         listen()
     }
 
     func voiceProviderDidCancel(_ provider: any VoiceProvider) {
+        pendingText = nil
         // An intentional stop/cancel must not restart listening.
     }
 
     func voiceProvider(_ provider: any VoiceProvider, didFailWith error: any Error) {
+        if let studioError = error as? VoiceStudioError, studioError.shouldFallbackToNative {
+            fallbackToNative()
+            return
+        }
         fail("Audio is unavailable right now. You can type your answer.")
+    }
+
+    private func fallbackToNative() {
+        let text = pendingText
+        pendingText = nil
+        provider.delegate = nil
+        let native = fallbackProviderFactory()
+        native.delegate = self
+        provider = native
+        guard conversationEnabled else { return }
+        if let text {
+            speak(text)
+        } else {
+            fail("Audio is unavailable right now. You can type your answer.")
+        }
     }
 }
 
