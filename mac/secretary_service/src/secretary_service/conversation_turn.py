@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 
 from pydantic import Field, JsonValue
 
+from secretary_service.capabilities import Capability, CapabilityRouter
 from secretary_service.models import FrozenModel, TransitionContext
 from secretary_service.relay_store import AgentTurnPersistence, ConversationRelayStore
 from secretary_service.slice.models import InterpretationProposal
@@ -101,6 +102,9 @@ def is_planning_intent(text: str) -> bool:
     return planning and weekly
 
 
+_ROUTER = CapabilityRouter()
+
+
 @final
 class ConversationTurnService:
     """Keep continuity in encrypted canonical storage, separate from transport events."""
@@ -125,7 +129,7 @@ class ConversationTurnService:
                 )
             )
         history.append(AgentUtterance(role="user", content=turn.text))
-        if is_planning_intent(turn.text):
+        if _ROUTER.dispatch(turn.text) is Capability.WEEK_PLANNING:
             # A spoken planning request routes to the deterministic week planner.
             # The client previews via POST /v1/week-plan, so the advisory agent is
             # not invoked (it has no calendar authority or facts to draft from).
