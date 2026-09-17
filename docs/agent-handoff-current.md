@@ -2,9 +2,8 @@
 
 ## Continuation campaign reconciliation — 2026-09-17
 
-Campaign `lifeos-continuation-campaign`, T1–T13 done on local `main`
-(HEAD `d357166`); T14 (signed iPhone build checklist) runs in parallel and
-is PENDING here; T15 is this update. Full suite at last full run:
+Campaign `lifeos-continuation-campaign`, T1–T14 done on local `main`;
+T15 is this update (T14 landed after as commit `c5d1ea1`, recorded below). Full suite at last full run:
 **549 passed, 30 skipped** (all skips Postgres-gated). Labels use ONLY the
 allowed vocabulary; every label maps to a receipt in
 `.omo/evidence/lifeos-continuation-campaign/`. No PHYSICAL IPHONE TESTED
@@ -24,7 +23,7 @@ claims (user tap-through is F3, not done); no PRODUCTION READY anywhere.
 | OMO supervision contract (read-only) | CONFIGURED + UNIT TESTED | `task-11-lifeos-continuation-campaign.md`: contract doc `docs/hermes-omo-contract.md`; parse-only module, "8 passed"; full suite 541 passed / 30 skipped |
 | Model router V1 (free-by-default, paid confined) | CONFIGURED | `task-12-lifeos-continuation-campaign.md`: `omo doctor` 23 → 15 (remainder are plugin schema limitations); paid-model grep over production configs 0 hits; single live zero-cost roundtrip HTTP 200, cost 0 |
 | Relay vertical (supervised restart + regression) | INTEGRATION TESTED + LOCALLY LIVE TESTED | `task-13-lifeos-continuation-campaign.md`: relay 628 → 34601 under supervision, Hermes gateway 625 untouched, plist checksum identical; vertical 70 passed / 11 PG-skipped + contract 4 passed |
-| Signed physical-iPhone acceptance build + checklist (T14) | PENDING | Receipt `.omo/evidence/lifeos-continuation-campaign/task-14-lifeos-continuation-campaign.md` absent at write time; T14 owns the checklist, referenced not duplicated |
+| Signed physical-iPhone acceptance build + checklist (T14) | CONFIGURED | `task-14-lifeos-continuation-campaign.md`: "** ARCHIVE SUCCEEDED **" signed `com.lifeos.SecretaryApp` arm64 (team 946R3QHA5P), 569105-byte IPA exported; checklist `docs/iphone-acceptance-checklist.md`; no on-device run — tap-through is F3 |
 
 ### Carry-forward flags (not done, not claimed)
 
