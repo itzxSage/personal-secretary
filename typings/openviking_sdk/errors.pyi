@@ -1,0 +1,20 @@
+# Minimal type stubs for ``openviking_sdk.errors`` (OpenViking 0.4.9).
+# The real SDK ships no ``py.typed`` marker, so basedpyright would otherwise
+# treat every symbol as ``Any``. Only the error classes used by
+# ``OpenVikingLifeMemoryProvider`` are declared here.
+
+
+class OpenVikingError(Exception):
+    ...
+
+
+class NotFoundError(OpenVikingError):
+    ...
+
+
+class InvalidArgumentError(OpenVikingError):
+    ...
+
+
+class AlreadyExistsError(OpenVikingError):
+    ...
