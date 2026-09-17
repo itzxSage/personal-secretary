@@ -1,5 +1,44 @@
 # LifeOS — Independent Review Checkpoint
 
+## Continuation campaign reconciliation — 2026-09-17
+
+Campaign `lifeos-continuation-campaign`, T1–T13 done on local `main`
+(HEAD `d357166`); T14 (signed iPhone build checklist) runs in parallel and
+is PENDING here; T15 is this update. Full suite at last full run:
+**549 passed, 30 skipped** (all skips Postgres-gated). Labels use ONLY the
+allowed vocabulary; every label maps to a receipt in
+`.omo/evidence/lifeos-continuation-campaign/`. No PHYSICAL IPHONE TESTED
+claims (user tap-through is F3, not done); no PRODUCTION READY anywhere.
+
+### Campaign outcomes
+
+| Campaign outcome | Label | Evidence receipt + result |
+|---|---|---|
+| Voice protocol + native provider (`VoiceProvider`, `NativeSpeechProvider`) | UNIT TESTED | `task-5-lifeos-continuation-campaign.md`: "81 tests, 0 failures" (78 Swift Testing + 3 XCTest); iOS simulator build green |
+| Voice adapter (`VoiceStudioProvider`, stub-verified) | UNIT TESTED | `task-6-lifeos-continuation-campaign.md`: "91 tests, 0 failures"; hermetic in-process stub ONLY, zero real network calls; `task-6-latency.md`: stub TTFB bound ≤ 5 ms, server timeout ≤ 5 s |
+| Voice provider selection + native fallback | UNIT TESTED | `task-8-lifeos-continuation-campaign.md`: "94 tests, 0 failures"; selection matrix + studio-failure→native fallback proven |
+| Memory canonical provider (`CanonicalLifeMemoryProvider`, JSONL) | UNIT TESTED | `task-7-lifeos-continuation-campaign.md`: "13 passed"; full suite 525 passed / 30 skipped at that commit |
+| Memory OpenViking provider (pinned 0.4.9) | INTEGRATION TESTED | `task-9-lifeos-continuation-campaign.md`: "8 passed" on 3 consecutive runs against a real local server; live store→recall→correction transcript captured; full suite 549 passed / 30 skipped |
+| Capability router (deterministic dispatch, parity with legacy intent) | UNIT TESTED | `task-4-lifeos-continuation-campaign.md`: 51 router tests incl. 28 parity tests; full suite 512 passed / 30 skipped |
+| Hermes boundary (consent/bounds/redaction) | UNIT TESTED | `task-10-lifeos-continuation-campaign.md`: "8 passed"; full suite 533 passed / 30 skipped; fake gateway only, no live loopback |
+| OMO supervision contract (read-only) | CONFIGURED + UNIT TESTED | `task-11-lifeos-continuation-campaign.md`: contract doc `docs/hermes-omo-contract.md`; parse-only module, "8 passed"; full suite 541 passed / 30 skipped |
+| Model router V1 (free-by-default, paid confined) | CONFIGURED | `task-12-lifeos-continuation-campaign.md`: `omo doctor` 23 → 15 (remainder are plugin schema limitations); paid-model grep over production configs 0 hits; single live zero-cost roundtrip HTTP 200, cost 0 |
+| Relay vertical (supervised restart + regression) | INTEGRATION TESTED + LOCALLY LIVE TESTED | `task-13-lifeos-continuation-campaign.md`: relay 628 → 34601 under supervision, Hermes gateway 625 untouched, plist checksum identical; vertical 70 passed / 11 PG-skipped + contract 4 passed |
+| Signed physical-iPhone acceptance build + checklist (T14) | PENDING | Receipt `.omo/evidence/lifeos-continuation-campaign/task-14-lifeos-continuation-campaign.md` absent at write time; T14 owns the checklist, referenced not duplicated |
+
+### Carry-forward flags (not done, not claimed)
+
+- **Physical acceptance:** microphone, STT/TTS, speech-to-Hermes delivery and
+  Control Center invocation remain unverified on device. F3 (user tap-through)
+  is the gate.
+- **Memory wiring:** the `LifeMemory` providers are standalone; they are not
+  wired into the canonical Life Model / SQLCipher store / interview-to-planning
+  path (`life_knowledge.py` untouched by T7).
+- **Postgres outbox:** the "uncertain"→"needs_reconciliation" assertion is
+  honored as a skip while `LIFEOS_TEST_POSTGRES_DSN` is unset (30 skips). It
+  needs reconciliation when Postgres is available (`uv run
+  scripts/verify_postgres.py`, verifier with `--with-postgres`).
+
 ## Takeover checkpoint — 2026-09-15
 
 **Recovered plan:** [`.omo/plans/lifeos-master-plan.md`](../.omo/plans/lifeos-master-plan.md).
