@@ -439,7 +439,7 @@ def test_signed_conversation_turn_preserves_follow_up_context(
         ("plan to leave", False),
     ],
 )
-def test_is_planning_intent(text: str, expected: bool) -> None:
+def test_is_planning_intent(text: str, *, expected: bool) -> None:
     """Planning intent requires a planning verb joined to a weekly/calendar scope."""
     assert is_planning_intent(text) is expected
 
@@ -456,25 +456,17 @@ def test_planning_turn_routes_to_week_plan_preview_action(
     planning = json.dumps(
         {"conversation_id": str(CONVERSATION), "text": "Help me plan my week"}
     ).encode()
-    status, response = conversation_turn_relay.request(
-        "POST", "/v1/conversation/turn", planning
-    )
+    status, response = conversation_turn_relay.request("POST", "/v1/conversation/turn", planning)
     assert status == 200
-    body = json.loads(response)
+    body = cast("dict[str, object]", json.loads(response))
     assert body["reply_text"] == "I'll preview your week plan from your LifeOS schedule."
-    assert body["proposed_actions"] == [
-        {"action_class": "week_plan_preview", "payload": {}}
-    ]
-    follow = json.dumps(
-        {"conversation_id": str(CONVERSATION), "text": "Tell me a joke"}
-    ).encode()
-    status, response = conversation_turn_relay.request(
-        "POST", "/v1/conversation/turn", follow
-    )
+    assert body["proposed_actions"] == [{"action_class": "week_plan_preview", "payload": {}}]
+    follow = json.dumps({"conversation_id": str(CONVERSATION), "text": "Tell me a joke"}).encode()
+    status, response = conversation_turn_relay.request("POST", "/v1/conversation/turn", follow)
     assert status == 200
-    body = json.loads(response)
-    assert body["reply_text"] == "history messages: 3"
-    assert body["proposed_actions"] == []
+    follow_body = cast("dict[str, object]", json.loads(response))
+    assert follow_body["reply_text"] == "history messages: 3"
+    assert follow_body["proposed_actions"] == []
 
 
 def test_no_client_certificate_rejected_by_tls(relay: RunningRelay) -> None:

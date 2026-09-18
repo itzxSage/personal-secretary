@@ -66,6 +66,7 @@ ignore = ["COM812", "ISC001", "D203", "D213", "CPY001"]
 "scripts/**/*.py" = ["T201", "INP001"]
 "mac/secretary_service/src/secretary_service/{audit,authority,backup_catalog,backups,canonical,domain_repository,enrollment,export,keys,ledger,leases,lifecycle,migration,models,provider,storage}.py" = ["D105", "D107"]
 "mac/secretary_service/src/secretary_service/conversation_api.py" = ["D101", "D105", "D107", "PLR0911"]
+"tools/**/*.py" = ["ANN", "D", "T201", "INP001", "EM101", "TRY003", "TRY004", "C408", "C901", "PLR0911", "PLR0912", "PLR0915", "S603", "S314", "PTH115", "EXE001"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

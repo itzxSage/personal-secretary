@@ -258,9 +258,8 @@ class CanonicalLifeMemoryProvider(LifeMemory):
         """Return a deterministic relevance score for one entry."""
         text_tokens = _tokens(entry.text)
         tag_tokens = _tokens(" ".join(entry.tags))
-        return (
-            _TAG_MATCH_WEIGHT * len(query_tokens & tag_tokens)
-            + _TEXT_MATCH_WEIGHT * len(query_tokens & text_tokens)
+        return _TAG_MATCH_WEIGHT * len(query_tokens & tag_tokens) + _TEXT_MATCH_WEIGHT * len(
+            query_tokens & text_tokens
         )
 
     @override
@@ -351,9 +350,7 @@ class CanonicalLifeMemoryProvider(LifeMemory):
         if entry is None:
             raise MemoryEntryNotFoundError(entry_id)
         now = self._clock()
-        new_confidence = (
-            ConfidenceState.CONFLICTED if contradicts else ConfidenceState.CONFIRMED
-        )
+        new_confidence = ConfidenceState.CONFLICTED if contradicts else ConfidenceState.CONFIRMED
         record = MemoryCorrection(
             text=correction,
             provenance=MemoryProvenance(source=source, captured_at=now),

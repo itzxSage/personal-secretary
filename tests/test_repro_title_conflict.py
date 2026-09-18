@@ -4,12 +4,19 @@ sendAgentTurn() create()s the conversation as "LifeOS" while synchronize() alrea
 create()d it as "Secretary". The client must treat that 409 as "already exists" and
 still run the turn — otherwise push-to-talk surfaces "couldn't get a reply".
 """
-import json
-from uuid import uuid4
 
-from secretary_service.conversation_turn import ConversationTurnReply, ConversationTurnService
+import json
+from pathlib import Path
+
+from secretary_service.conversation_turn import (
+    AgentUtterance,
+    ConversationTurnReply,
+    ConversationTurnService,
+)
+from secretary_service.keys import DeterministicTestKeyProvider
 from secretary_service.relay_api import create_relay_app
 from secretary_service.storage import EncryptedStateStore
+from tests.helpers import FakeClock
 from tests.test_conversation_relay import CONVERSATION, provision
 from tests.test_relay_https import certificates, serving
 
@@ -17,21 +24,25 @@ from tests.test_relay_https import certificates, serving
 class _EchoAgent:
     """Minimal ConversationAgent stand-in; returns a fixed turn reply."""
 
-    def respond(self, history):
+    def respond(self, history: tuple[AgentUtterance, ...]) -> ConversationTurnReply:
+        del history
         return ConversationTurnReply(reply_text="Echo back.", proposed_actions=())
 
 
-def _make_factory(store):
+def _make_factory(store: EncryptedStateStore) -> ConversationTurnService:
     return ConversationTurnService(_EchoAgent(), store.conversations)
 
 
-def test_create_title_mismatch_409_then_turn_succeeds(tmp_path, keys, clock):
+def test_create_title_mismatch_409_then_turn_succeeds(
+    tmp_path: Path, keys: DeterministicTestKeyProvider, clock: FakeClock
+) -> None:
     tls = certificates(tmp_path, clock)
     path = tmp_path / "conflict.sqlite"
     with EncryptedStateStore.open(path, keys, clock) as store:
         provision(store, clock, fingerprint=tls.fingerprint)
     app = create_relay_app(
-        lambda: EncryptedStateStore.open(path, keys, clock), clock,
+        lambda: EncryptedStateStore.open(path, keys, clock),
+        clock,
         conversation_turn_factory=_make_factory,
     )
     with serving(app, tls, clock, path, keys) as running:
