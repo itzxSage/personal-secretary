@@ -260,7 +260,7 @@
 		534A4161CC6727ADB6B671ED /* LifeInterviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifeInterviewView.swift; sourceTree = "<group>"; };
 		5606E97A1CA6E70BA685EAE8 /* VoiceProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceProviderTests.swift; sourceTree = "<group>"; };
 		5691D937A70308733E6F4433 /* SecretaryClient.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = SecretaryClient.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		56C3D91F86D33A258B4F52AE /* SecretaryApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SecretaryApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		56C3D91F86D33A258B4F52AE /* SecretaryApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SecretaryApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		579813115A7043EF29E7FBF7 /* VoiceConversationClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceConversationClient.swift; sourceTree = "<group>"; };
 		5BCB1102A34145B425474B6B /* SecretaryClientTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SecretaryClientTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F6BD45BC40C9173768D713F /* SecretarySurfaces.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = SecretarySurfaces.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -671,7 +671,6 @@
 						ProvisioningStyle = Automatic;
 					};
 					B02F8B85D1A46998F053A7BC = {
-						DevelopmentTeam = 946R3QHA5P;
 						ProvisioningStyle = Automatic;
 					};
 				};
