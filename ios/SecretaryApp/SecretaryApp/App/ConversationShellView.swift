@@ -64,7 +64,7 @@ struct ConversationShellView: View {
         } message: {
             Text("Message content is purged. Only minimized audit proof remains.")
         }
-        .sheet(isPresented: $showingWeekPlan) { WeekPlanView(session: session) }
+        .sheet(isPresented: $showingWeekPlan) { WeekPlanView(session: session, onTeachRoutines: { showingInterview = true }) }
         .onChange(of: session.showAgentWeekPlan) { _, show in
             if show { showingWeekPlan = true; session.dismissAgentWeekPlan() }
         }
@@ -220,6 +220,7 @@ private struct TranscriptRow: View {
 
 private struct WeekPlanView: View {
     let session: ConversationSession
+    let onTeachRoutines: () -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -228,7 +229,7 @@ private struct WeekPlanView: View {
                 VStack(alignment: .leading, spacing: LifeDesign.spacing) {
                     stateCard
                     if let proposal = session.weekPlanProposal {
-                        proposalDetails(proposal)
+                        proposalDetails(proposal, onTeachRoutines: onTeachRoutines)
                     }
                 }
                 .padding(LifeDesign.spacing)
@@ -324,7 +325,10 @@ private struct WeekPlanView: View {
         }
     }
 
-    @ViewBuilder private func proposalDetails(_ proposal: WeekPlanProposal) -> some View {
+    @ViewBuilder private func proposalDetails(_ proposal: WeekPlanProposal, onTeachRoutines: @escaping () -> Void) -> some View {
+        let hasCalendarOperations = !proposal.calendarDryRun.operations.isEmpty
+        let hasSchedulableBlocks = proposal.blocks.contains { $0.calendarEligible }
+
         Text("\(date(proposal.windowStart, proposal: proposal)) – \(date(proposal.windowEnd, proposal: proposal))")
             .font(.title2.bold())
         Text("Times in \(proposal.timezone.replacingOccurrences(of: "_", with: " "))")
@@ -373,50 +377,65 @@ private struct WeekPlanView: View {
                 }
             }
         }
-        Text("Your proposed schedule").font(.title2.bold())
-        ForEach(days(proposal), id: \.self) { day in
-            LifeCard {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(date(day, proposal: proposal))
-                        .font(.headline)
-                    ForEach(Array(proposal.blocks.filter {
-                        calendar(proposal).isDate($0.startsAt, inSameDayAs: day)
-                    }.sorted { $0.startsAt < $1.startsAt }.enumerated()), id: \.offset) { _, block in
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("\(time(block.startsAt, proposal: proposal)) – \(time(block.endsAt, proposal: proposal))")
-                                .font(.caption).foregroundStyle(LifeDesign.secondary)
-                            Text(block.title).font(.body.weight(.medium))
-                            if block.kind == .fixed || block.kind == .protected {
-                                Label("Protected time", systemImage: "lock").font(.caption)
+        if hasCalendarOperations || hasSchedulableBlocks {
+            Text("Your proposed schedule").font(.title2.bold())
+            ForEach(days(proposal), id: \.self) { day in
+                LifeCard {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(date(day, proposal: proposal))
+                            .font(.headline)
+                        ForEach(Array(proposal.blocks.filter {
+                            calendar(proposal).isDate($0.startsAt, inSameDayAs: day)
+                        }.sorted { $0.startsAt < $1.startsAt }.enumerated()), id: \.offset) { _, block in
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("\(time(block.startsAt, proposal: proposal)) – \(time(block.endsAt, proposal: proposal))")
+                                    .font(.caption).foregroundStyle(LifeDesign.secondary)
+                                Text(block.title).font(.body.weight(.medium))
+                                if block.kind == .fixed || block.kind == .protected {
+                                    Label("Protected time", systemImage: "lock").font(.caption)
+                                }
+                                let explanations = proposal.explanations.filter {
+                                    $0.scheduledBlockIDs.contains(block.blockID) || $0.activityID == block.activityID
+                                }
+                                if !explanations.isEmpty {
+                                    DisclosureGroup("Why is this here?") {
+                                        ForEach(Array(explanations.enumerated()), id: \.offset) { _, explanation in
+                                            Text(explanation.summary).font(.subheadline)
+                                        }
+                                    }.font(.caption)
+                                }
                             }
-                            let explanations = proposal.explanations.filter {
-                                $0.scheduledBlockIDs.contains(block.blockID) || $0.activityID == block.activityID
-                            }
-                            if !explanations.isEmpty {
-                                DisclosureGroup("Why is this here?") {
-                                    ForEach(Array(explanations.enumerated()), id: \.offset) { _, explanation in
-                                        Text(explanation.summary).font(.subheadline)
-                                    }
-                                }.font(.caption)
-                            }
+                            Divider()
                         }
-                        Divider()
                     }
                 }
             }
-        }
-        if !proposal.calendarBlocks.isEmpty {
-            LifeCard {
-                DisclosureGroup("How your time appears in Calendar") {
-                    ForEach(Array(proposal.calendarBlocks.enumerated()), id: \.offset) { _, block in
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(block.title).bold()
-                            Text("\(date(block.startsAt, proposal: proposal)), \(time(block.startsAt, proposal: proposal)) – \(time(block.endsAt, proposal: proposal))")
-                                .font(.caption)
-                            ForEach(Array(block.segmentTitles.enumerated()), id: \.offset) { _, title in Text(title) }
-                            ForEach(Array(block.transitions.enumerated()), id: \.offset) { _, transition in Text(transition).font(.caption) }
-                        }.padding(.vertical, 8)
+            if !proposal.calendarBlocks.isEmpty {
+                LifeCard {
+                    DisclosureGroup("How your time appears in Calendar") {
+                        ForEach(Array(proposal.calendarBlocks.enumerated()), id: \.offset) { _, block in
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(block.title).bold()
+                                Text("\(date(block.startsAt, proposal: proposal)), \(time(block.startsAt, proposal: proposal)) – \(time(block.endsAt, proposal: proposal))")
+                                    .font(.caption)
+                                ForEach(Array(block.segmentTitles.enumerated()), id: \.offset) { _, title in Text(title) }
+                                ForEach(Array(block.transitions.enumerated()), id: \.offset) { _, transition in Text(transition).font(.caption) }
+                            }.padding(.vertical, 8)
+                        }
                     }
+                }
+            }
+        } else {
+            LifeCard {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("No routines to schedule yet").font(.headline)
+                    Text("LifeOS needs confirmed days, times or time windows, durations, and flexibility where relevant to build your week.")
+                        .foregroundStyle(LifeDesign.secondary)
+                    Button("Teach LifeOS my routines", action: onTeachRoutines)
+                        .buttonStyle(.borderedProminent).tint(LifeDesign.navy)
+                        .controlSize(.large)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityIdentifier("week-plan.teach-routines")
                 }
             }
         }
